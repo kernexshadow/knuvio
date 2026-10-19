@@ -1,0 +1,171 @@
+name: Sync upstream and release
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Upstream release tag to build (default is the newest upstream release)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: knuvio-sync-release
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: NuvioMedia/NuvioTV
+  RELEASE_SUFFIX: "+k"
+  OWN_WORKFLOW: .github/workflows/knuvio-sync-release.yml
+
+jobs:
+  sync-release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          # A PAT is needed to push upstream changes to .github/workflows.
+          token: ${{ secrets.SYNC_PAT }}
+
+      - name: Find upstream release
+        id: upstream
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ -n "${INPUT_TAG}" ]]; then
+            tag="${INPUT_TAG}"
+          else
+            # Newest published release, prereleases included.
+            tag=$(gh api "repos/${UPSTREAM_REPO}/releases" --jq '[.[] | select(.draft | not)][0].tag_name')
+          fi
+          if [[ -z "${tag}" ]]; then
+            echo "No upstream release found." >&2
+            exit 1
+          fi
+          prerelease=$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${tag}" --jq '.prerelease')
+          release_tag="${tag}${RELEASE_SUFFIX}"
+
+          if gh release view "${release_tag}" -R "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${release_tag} already exists; nothing to do."
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+          {
+            echo "tag=${tag}"
+            echo "release_tag=${release_tag}"
+            echo "prerelease=${prerelease}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Merge upstream release
+        if: steps.upstream.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          git config user.name "knuvio-sync[bot]"
+          git config user.email "knuvio-sync@users.noreply.github.com"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream "refs/tags/${TAG}:refs/tags/${TAG}"
+
+          if ! git merge --no-edit -m "Merge upstream ${TAG}" "refs/tags/${TAG}"; then
+            git merge --abort
+            echo "::error::Merging upstream ${TAG} into main has conflicts. Resolve them locally and push main."
+            exit 1
+          fi
+          git push origin HEAD:main
+
+      - name: Disable inherited upstream workflows
+        if: steps.upstream.outputs.skip != 'true'
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows" \
+            --jq ".workflows[] | select(.state == \"active\" and .path != \"${OWN_WORKFLOW}\") | .id" |
+            while read -r id; do
+              echo "Disabling workflow ${id}"
+              gh workflow disable "${id}" -R "${GITHUB_REPOSITORY}"
+            done
+
+      - name: Set up Java
+        if: steps.upstream.outputs.skip != 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        if: steps.upstream.outputs.skip != 'true'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Configure build properties and signing
+        if: steps.upstream.outputs.skip != 'true'
+        env:
+          LOCAL_PROPERTIES_BASE64: ${{ secrets.KNUVIO_LOCAL_PROPERTIES_BASE64 }}
+          LOCAL_DEV_PROPERTIES_BASE64: ${{ secrets.KNUVIO_LOCAL_DEV_PROPERTIES_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.KNUVIO_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KNUVIO_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KNUVIO_KEYSTORE_PASSWORD }}
+        run: |
+          missing=()
+          for name in LOCAL_PROPERTIES_BASE64 KEYSTORE_BASE64 KEY_ALIAS KEYSTORE_PASSWORD; do
+            [[ -n "${!name}" ]] || missing+=("${name}")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+
+          printf '%s' "${LOCAL_PROPERTIES_BASE64}" | base64 --decode > local.properties
+          if [[ -n "${LOCAL_DEV_PROPERTIES_BASE64}" ]]; then
+            printf '%s' "${LOCAL_DEV_PROPERTIES_BASE64}" | base64 --decode > local.dev.properties
+          fi
+          sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_[A-Z_]+)[[:space:]]*=/d' local.properties
+
+          keystore_path="${RUNNER_TEMP}/knuvio-release.jks"
+          printf '%s' "${KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          {
+            echo "NUVIO_RELEASE_STORE_FILE=${keystore_path}"
+            echo "NUVIO_RELEASE_KEY_ALIAS=${KEY_ALIAS}"
+            # PKCS12 keystores use the store password for the key as well.
+            echo "NUVIO_RELEASE_KEY_PASSWORD=${KEYSTORE_PASSWORD}"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=${KEYSTORE_PASSWORD}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Build full release APKs
+        if: steps.upstream.outputs.skip != 'true'
+        run: ./gradlew :app:assembleFullRelease --stacktrace
+
+      - name: Create GitHub release
+        if: steps.upstream.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.upstream.outputs.tag }}
+          RELEASE_TAG: ${{ steps.upstream.outputs.release_tag }}
+          PRERELEASE: ${{ steps.upstream.outputs.prerelease }}
+        run: |
+          mapfile -t apks < <(find app/build/outputs/apk/full/release -maxdepth 1 -type f -name '*.apk' -print | sort)
+          if (( ${#apks[@]} == 0 )); then
+            echo "No release APKs were produced." >&2
+            exit 1
+          fi
+
+          printf '%s\n' \
+            "knuvio build of [${UPSTREAM_REPO} ${TAG}](https://github.com/${UPSTREAM_REPO}/releases/tag/${TAG})." \
+            "" \
+            "See the upstream release for the changelog." > release-notes.md
+
+          args=("${RELEASE_TAG}" --target "$(git rev-parse HEAD)" --title "knuvio ${TAG}" --notes-file release-notes.md)
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+          gh release create "${args[@]}" "${apks[@]}"
