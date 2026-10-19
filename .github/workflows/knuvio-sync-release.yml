@@ -225,4 +225,4 @@ jobs:
           else
             args+=(--latest)
           fi
-          gh release create "${args[@]}" "${apks[@]}"
+          gh release create -R "${GITHUB_REPOSITORY}" "${args[@]}" "${apks[@]}"
