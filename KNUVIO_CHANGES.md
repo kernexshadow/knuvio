@@ -8,8 +8,9 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 
 | Upstream file | Changed by |
 |---|---|
-| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source) |
+| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
+| `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -72,3 +73,23 @@ can be dropped from knuvio after merging X.
 - **Upstream status:** knuvio only.
 - **Watch:** upstream edits to `VersionUtils.kt` will conflict. Keep the `knuvioRevision` comparison as the last tie-breaker
   and run `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.updater.*'`.
+
+## K-06 Audio-based subtitle sync (upstream PR #4150)
+
+- **Why:** try upstream's proposed audio sync fallback before it is merged: when a subtitle cannot be synced from embedded
+  subtitles, it is aligned against the speech in the audio track.
+- **What:** the four commits of [NuvioMedia/NuvioTV#4150](https://github.com/NuvioMedia/NuvioTV/pull/4150) by DavidVamaiotu
+  (head `9d72c7046`), cherry-picked unchanged. The build downloads the sherpa-onnx AAR from GitHub (pinned version and
+  SHA-256). On first use the app downloads the speech model, about 74 MB, from the PR author's GitHub release (ORT
+  conversion), or from Hugging Face (k2-fsa ONNX files) if that fails; every file is pinned by size and SHA-256.
+- **Files:** new `app/src/main/java/com/nuvio/tv/ui/screens/player/audiosync/**`, its tests,
+  `res/raw/silero_vad_v5_16k.bin`, `res/values/audio_sync_strings.xml`, `assets/licenses/audio_sync_NOTICE.md`.
+  Upstream files edited: `app/build.gradle.kts`, `app/proguard-rules.pro`, `PlayerRuntimeController{AutomaticSubtitleSync,
+  Initialization,Lifecycle,Observers}.kt`, `settings/LicensesAttributionsScreen.kt`, `settings/PlaybackSubtitleSettings.kt`.
+- **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
+  `9d72c7046` (each message ends with "cherry picked from commit …").
+- **Remove:** revert the four cherry-picks, newest first.
+- **Upstream status:** upstream PR #4150 (open).
+- **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, merging it may
+  conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
+  Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
