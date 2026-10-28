@@ -12,6 +12,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
+| Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -135,3 +136,24 @@ can be dropped from knuvio after merging X.
   release contains the PR, merging it conflicts in the files above: take upstream's version and delete this entry. If the PR
   is closed without merging, revert. Check with `python native/usenet/scripts/check_prebuilts.py` and
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
+
+## K-08 Blu-ray clips and discs in ExoPlayer (upstream PR #696)
+
+- **Why:** Blu-ray clips (`.m2ts`) and full disc releases fail in ExoPlayer and need an external player. With this change
+  they play in the internal player, also from the built-in Usenet engine of K-07.
+- **What:** [NuvioMedia/NuvioTV#696](https://github.com/NuvioMedia/NuvioTV/pull/696) by kernexshadow (head `3afa62cd0`),
+  imported as one commit like K-07: the PR's diff against upstream `dev` `b700cf98e`, applied onto 1.1.0-beta.8 without
+  conflicts and without changes. BDAV clips play and seek (EP map from the CLPI), TrueHD and PGS tracks are exposed, track
+  languages come from the CLPI, a clip that is part of its feature plays the whole feature, and a disc titles button lists
+  the extras. Disc images (`.iso`) play only through the K-07 engine, which serves the disc's files beside the clip.
+- **Files:** new `ui/screens/player/{BdavM2tsDataSource,BdavPgsReader,BdavTrueHdReader,BlurayClipInfo,
+  BlurayPlaylistResolver,PlayerRuntimeControllerDiscTitles}.kt` and five tests. Upstream files edited:
+  `ui/screens/player/{PlayerMediaSourceFactory,PlayerScreen,PlayerUiState,PostPlayRecommendationState}.kt`, the
+  `PlayerRuntimeController*.kt` files (base, EngineFailover, ErrorRecovery, Initialization, PlaybackEvents, Streams,
+  TrackSelection; most are also edited by K-07), `res/values{,-pt-rPT,-pt-rBR}/strings.xml`.
+- **Commits:** the commit "knuvio: import upstream PR #696 (Blu-ray clips and discs in ExoPlayer)".
+- **Remove:** revert that commit (before K-07 if both go).
+- **Upstream status:** upstream PR #696 (open).
+- **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
+  (`git rev-list --reverse --no-merges 3afa62cd0..<new head> ^upstream/dev`). Check with
+  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
