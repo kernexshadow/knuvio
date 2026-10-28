@@ -8,9 +8,10 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 
 | Upstream file | Changed by |
 |---|---|
-| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
+| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
+| `gradle/libs.versions.toml`, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -93,3 +94,44 @@ can be dropped from knuvio after merging X.
 - **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, merging it may
   conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
   Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
+
+## K-07 Built-in Usenet streaming (upstream PR #3511)
+
+- **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
+  TV, without an external bridge.
+- **What:** [NuvioMedia/NuvioTV#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511) by haaihond (head `923913210`),
+  imported as one commit: the PR's diff against the upstream `dev` commit it last merged (`7596edc76`), applied onto
+  1.1.0-beta.8 with a three-way merge. The PR branch itself is not merged, because it carries upstream `dev` commits that are
+  in no release yet. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings are under
+  Settings → Integrations → Usenet. The build uses the PR's prebuilt engine for the four ABIs (about 11 MB each, no Go
+  needed); `python native/usenet/scripts/check_prebuilts.py` checks them against the vendored source. The parts of the PR
+  that rely on upstream `dev` after beta.8 were left out:
+  - `StreamLinkCacheDataStore`: no `audioDelayLanguage`.
+  - `SettingsScreen`: the integrations hub does not return focus to the last opened section, so the Usenet row has no
+    focus requester.
+  - `StreamScreenViewModel`: the external player launch keeps beta.8's flow (no torrent stream hand-off); the Usenet session
+    is handed to the external player after a launch, or released if it fails.
+  - `PlayerRuntimeControllerMpvEvents`: the mpv retry is still attempted for permanent HTTP errors, as in beta.8.
+  - `QrCodeOverlay` (`AddonManagerScreen`): gains `status` but not `modifier`.
+- **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
+  `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
+  Usenet screens), their tests, three `res/values/*usenet*` files,
+  `BUILT_IN_USENET.md`, `STREAM_FALLBACK.md`, `docs/USENET_SORTING.md`, `.github/workflows/usenet-tests.yml`. Upstream files
+  edited: `app/build.gradle.kts`, `gradle/libs.versions.toml`, `NuvioApplication.kt`, `core/player/{FrameRateUtils,
+  StreamAutoPlaySelector,SubtitleFileCache}.kt`, `core/streams/PlaybackAvailability.kt`,
+  `data/local/StreamLinkCacheDataStore.kt`, `data/mapper/StreamMapper.kt`, `data/remote/api/TmdbApi.kt`,
+  `data/remote/dto/StreamResponseDto.kt`, `data/repository/StreamRepositoryImpl.kt`, `domain/model/Stream.kt`,
+  `ui/components/{PlaybackAvailabilityProvider,StreamBadgeChips}.kt`, `ui/screens/addon/AddonManagerScreen.kt`,
+  `ui/screens/player/{MpvStartupWatchdogPolicy,NuvioMpvSurfaceView,PlayerMediaSourceFactory}.kt`, the
+  `PlayerRuntimeController*.kt` files (base, ErrorRecovery, Initialization, Lifecycle, Mpv, MpvEvents, Observers,
+  PlaybackEvents, Scrobble, Startup, Streams, TrackSelection), `ui/screens/settings/{AdvancedSettingsViewModel,
+  DiagnosticsCard,PlaybackSettingsViewModel,SettingsScreen}.kt`, `ui/screens/stream/{StreamScreen,StreamScreenViewModel}.kt`,
+  `res/values/strings.xml`, four existing unit tests and two upstream workflows (disabled in knuvio).
+- **Commits:** the commit "knuvio: import upstream PR #3511 (built-in Usenet streaming)".
+- **Remove:** revert that commit.
+- **Upstream status:** upstream PR #3511 (open).
+- **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
+  (`git rev-list --reverse --no-merges 923913210..<new head> ^upstream/dev`) and update the head here. When an upstream
+  release contains the PR, merging it conflicts in the files above: take upstream's version and delete this entry. If the PR
+  is closed without merging, revert. Check with `python native/usenet/scripts/check_prebuilts.py` and
+  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
