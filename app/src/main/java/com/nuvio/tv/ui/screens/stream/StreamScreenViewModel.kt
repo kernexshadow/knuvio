@@ -550,6 +550,10 @@ class StreamScreenViewModel @Inject constructor(
                 addonRepository.getInstalledAddons().first().enabledAddons()
             }
             val installedAddonOrder = installedAddons.map { it.displayName }
+            val usenetAddonsAbove = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { usenetSourceSettings.read().addonsAbove }.getOrNull()
+            }
+            val sourceOrder = com.nuvio.tv.core.usenet.BuiltInUsenetOrder.sourceOrder(installedAddons, usenetAddonsAbove)
             val directDebridSourceNames = emptyList<String>()
             val directDebridAvailable = false
             val persistedBingeGroup = if (playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode &&
@@ -566,7 +570,7 @@ class StreamScreenViewModel @Inject constructor(
             fun applySuccess(addonStreamGroups: List<AddonStreams>, isAllLoaded: Boolean) {
                 val orderedAddonStreams = StreamAutoPlaySelector.orderAddonStreams(
                     addonStreamGroups,
-                    installedAddonOrder,
+                    sourceOrder,
                     preferredServerNames
                 )
 
@@ -861,7 +865,7 @@ class StreamScreenViewModel @Inject constructor(
                                 // match is found we can start playback immediately
                                 // without waiting for the full timeout.
                                 val orderedStreams = StreamAutoPlaySelector.orderAddonStreams(
-                                    result.data, installedAddonOrder, preferredServerNames
+                                    result.data, sourceOrder, preferredServerNames
                                 )
                                 val allStreams = orderedStreams.flatMap { it.streams }
                                 val earlyMatch = StreamAutoPlaySelector.selectAutoPlayStream(

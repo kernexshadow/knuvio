@@ -13,6 +13,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
+| Addon manager, player and stream files listed in K-09 | [K-09](#k-09-built-in-usenet-among-the-addons-haaihondnuviotv-pr-58) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -157,3 +158,25 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 3afa62cd0..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
+
+## K-09 Built-in Usenet among the addons (haaihond/NuvioTV PR #58)
+
+- **Why:** K-07's built-in Usenet results always came after every addon, so *Auto-play first source* only reached them when
+  no addon had a result.
+- **What:** [haaihond/NuvioTV#58](https://github.com/haaihond/NuvioTV/pull/58) by kernexshadow, a follow-up to K-07 proposed
+  to the branch of upstream PR #3511 (`nntp`, base `923913210`, the same head as K-07). One commit, `927023efd`,
+  cherry-picked. The addon list gets a "Built-in Usenet" row (toggle and move buttons, no Remove) once a provider and an
+  indexer are set up; its place orders the results on the stream screen and in the player (next-episode auto-play, stream
+  fallback). The place is stored per profile with the device-local Usenet sources, never in the synced addon order. Built-in
+  Usenet now always comes before plugins. Left out because it relies on upstream `dev` after beta.8: the addon toggles have
+  no `contentDescription` (`toggleLabel` and `cd_enable_addon` do not exist in beta.8), as before.
+- **Files:** new `core/usenet/BuiltInUsenetOrder.kt` and its test; `core/usenet/UsenetSources.kt` (from K-07). Upstream files
+  edited: `ui/screens/addon/{AddonManagerScreen,AddonManagerUiState,AddonManagerViewModel}.kt`,
+  `ui/screens/player/{PlayerRuntimeController,PlayerRuntimeControllerServer,PlayerRuntimeControllerStreams,
+  PlayerViewModel}.kt`, `ui/screens/stream/StreamScreenViewModel.kt`, `res/values/strings.xml`.
+- **Commits:** the commit "knuvio: import haaihond/NuvioTV PR #58 (built-in Usenet among the addons)".
+- **Remove:** revert that commit (before K-07 if both go).
+- **Upstream status:** haaihond/NuvioTV PR #58 (open), into the branch of upstream PR #3511.
+- **Watch:** if the PR is merged into `nntp`, `927023efd` arrives with K-07's next head update: leave it out of that
+  cherry-pick and fold this entry into K-07. If the PR gets more commits, cherry-pick them too. Check with
+  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*'`.
