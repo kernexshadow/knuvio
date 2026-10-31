@@ -29,7 +29,8 @@ data class CachedStreamLink(
     val nzbUrl: String? = null,
     val releaseTitle: String? = null,
     val publishedAt: Long? = null,
-    val audioDelayMs: Int? = null
+    val audioDelayMs: Int? = null,
+    val audioDelayLanguage: String? = null
 )
 
 @Singleton
@@ -61,7 +62,8 @@ class StreamLinkCacheDataStore @Inject constructor(
         nzbUrl: String? = null,
         releaseTitle: String? = null,
         publishedAt: Long? = null,
-        audioDelayMs: Int? = null
+        audioDelayMs: Int? = null,
+        audioDelayLanguage: String? = null
     ) {
         // Loopback Usenet capabilities expire with the playback process; the release is kept instead.
         if (com.nuvio.tv.core.usenet.UsenetSidecar.isSessionUrl(url)) return
@@ -83,6 +85,7 @@ class StreamLinkCacheDataStore @Inject constructor(
             contentLanguage?.let { put("contentLanguage", it) }
             year?.let { put("year", it) }
             audioDelayMs?.let { put("audioDelayMs", it) }
+            audioDelayLanguage?.let { put("audioDelayLanguage", it) }
         }.toString()
 
         store().edit { prefs ->
@@ -141,7 +144,8 @@ class StreamLinkCacheDataStore @Inject constructor(
                 nzbUrl = nzbUrl,
                 releaseTitle = json.optString("releaseTitle", "").ifBlank { null },
                 publishedAt = json.optLong("publishedAt", 0L).takeIf { it > 0L },
-                audioDelayMs = if (json.has("audioDelayMs")) json.optInt("audioDelayMs") else null
+                audioDelayMs = if (json.has("audioDelayMs")) json.optInt("audioDelayMs") else null,
+                audioDelayLanguage = json.optString("audioDelayLanguage", "").ifBlank { null }
             )
         }.getOrNull()
 
