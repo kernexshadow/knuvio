@@ -11,9 +11,8 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
-| `gradle/libs.versions.toml`, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
+| `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
-| Addon manager, player and stream files listed in K-09 | [K-09](#k-09-built-in-usenet-among-the-addons-haaihondnuviotv-pr-58) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -30,7 +29,7 @@ can be dropped from knuvio after merging X.
   - The five alternative launcher icons and banners (arctic blue, emerald, rose gold, copper, graphite), recoloured K.
 - **Files:** `app/src/full/res/**` (`mipmap-*`, `drawable/`, `drawable-nodpi/`, `values*/strings_knuvio.xml`),
   `app/src/fullDebug/res/values/strings_knuvio.xml`, `knuvio-branding/**` (source artwork and generator scripts).
-- **Commits:** `a8d06b712`, `dce6f721c`, `f7e032b73`, `17e90709f`.
+- **Commits:** `a8d06b712`, `dce6f721c`, `f7e032b73`, `17e90709f`, `45174c883`.
 - **Remove:** delete the files; the upstream resources in `app/src/main/res` take over.
 - **Upstream status:** knuvio only.
 - **Watch:** a new upstream locale with `app_name` needs its own `strings_knuvio.xml`; a new theme or icon option needs a
@@ -103,20 +102,23 @@ can be dropped from knuvio after merging X.
 
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
-- **What:** [NuvioMedia/NuvioTV#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511) by haaihond (head `923913210`),
-  imported as one commit: the PR's diff against the upstream `dev` commit it last merged (`7596edc76`), applied onto
-  1.1.0-beta.8 with a three-way merge. The PR branch itself is not merged, because it carries upstream `dev` commits that are
-  in no release yet. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings are under
+- **What:** [NuvioMedia/NuvioTV#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511) by haaihond, complete at head
+  `ee1d3a643`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings are under
   Settings → Integrations → Usenet. The build uses the PR's prebuilt engine for the four ABIs (about 11 MB each, no Go
-  needed); `python native/usenet/scripts/check_prebuilts.py` checks them against the vendored source. The parts of the PR
-  that rely on upstream `dev` after beta.8 were left out:
-  - `StreamLinkCacheDataStore`: no `audioDelayLanguage`.
-  - `SettingsScreen`: the integrations hub does not return focus to the last opened section, so the Usenet row has no
-    focus requester.
-  - `StreamScreenViewModel`: the external player launch keeps beta.8's flow (no torrent stream hand-off); the Usenet session
-    is handed to the external player after a launch, or released if it fails.
-  - `PlayerRuntimeControllerMpvEvents`: the mpv retry is still attempted for permanent HTTP errors, as in beta.8.
-  - `QrCodeOverlay` (`AddonManagerScreen`): gains `status` but not `modifier`.
+  needed); `python native/usenet/scripts/check_prebuilts.py` checks them against the vendored source. The head includes three
+  follow-ups by kernexshadow, merged into the PR branch (`nntp`) through haaihond/NuvioTV pull requests:
+  - [#58](https://github.com/haaihond/NuvioTV/pull/58): once a provider and an indexer are set up, the addon list gets a
+    "Built-in Usenet" row (toggle and move buttons, no Remove). Its place orders the results on the stream screen and in the
+    player (next-episode auto-play, stream fallback), so *Auto-play first source* can reach Usenet before the addons below it.
+    The place is stored per profile with the device-local Usenet sources, never in the synced addon order. Built-in Usenet
+    always comes before plugins.
+  - [#59](https://github.com/haaihond/NuvioTV/pull/59) and [#60](https://github.com/haaihond/NuvioTV/pull/60): the engine
+    opens RAR sets stored inside a RAR set; the prebuilt binaries are rebuilt with it.
+
+  How it got here: the PR branch is not merged, because it carries upstream `dev` commits that are in no release. Its diff
+  against the `dev` commit it last merged (`7596edc76`) was imported onto 1.1.0-beta.8 as one commit, leaving out the parts
+  that relied on later `dev`; #58, #59 and #60 were cherry-picked (`927023efd`, `e9c3d3d08`, `666cc76e6`). 1.1.0-beta.9
+  contains `7596edc76`, so its merge restored the parts left out, and knuvio now matches the PR head exactly.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
@@ -125,19 +127,25 @@ can be dropped from knuvio after merging X.
   StreamAutoPlaySelector,SubtitleFileCache}.kt`, `core/streams/PlaybackAvailability.kt`,
   `data/local/StreamLinkCacheDataStore.kt`, `data/mapper/StreamMapper.kt`, `data/remote/api/TmdbApi.kt`,
   `data/remote/dto/StreamResponseDto.kt`, `data/repository/StreamRepositoryImpl.kt`, `domain/model/Stream.kt`,
-  `ui/components/{PlaybackAvailabilityProvider,StreamBadgeChips}.kt`, `ui/screens/addon/AddonManagerScreen.kt`,
-  `ui/screens/player/{MpvStartupWatchdogPolicy,NuvioMpvSurfaceView,PlayerMediaSourceFactory}.kt`, the
+  `ui/components/{PlaybackAvailabilityProvider,StreamBadgeChips}.kt`,
+  `ui/screens/addon/{AddonManagerScreen,AddonManagerUiState,AddonManagerViewModel}.kt`,
+  `ui/screens/player/{MpvStartupWatchdogPolicy,NuvioMpvSurfaceView,PlayerMediaSourceFactory,PlayerViewModel}.kt`, the
   `PlayerRuntimeController*.kt` files (base, ErrorRecovery, Initialization, Lifecycle, Mpv, MpvEvents, Observers,
-  PlaybackEvents, Scrobble, Startup, Streams, TrackSelection), `ui/screens/settings/{AdvancedSettingsViewModel,
+  PlaybackEvents, Scrobble, Server, Startup, Streams, TrackSelection), `ui/screens/settings/{AdvancedSettingsViewModel,
   DiagnosticsCard,PlaybackSettingsViewModel,SettingsScreen}.kt`, `ui/screens/stream/{StreamScreen,StreamScreenViewModel}.kt`,
   `res/values/strings.xml`, four existing unit tests and two upstream workflows (disabled in knuvio).
-- **Commits:** the commit "knuvio: import upstream PR #3511 (built-in Usenet streaming)".
-- **Remove:** revert that commit.
+- **Commits:** "knuvio: import upstream PR #3511 (built-in Usenet streaming)", "knuvio: import haaihond/NuvioTV PR #58
+  (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08` and `666cc76e6`, and the conflict resolution in
+  "Merge upstream 1.1.0-beta.9".
+- **Remove:** revert the two cherry-picks and the two import commits, newest first (K-08 before them if both go). Where a
+  revert conflicts, keep the upstream release's code.
 - **Upstream status:** upstream PR #3511 (open).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 923913210..<new head> ^upstream/dev`) and update the head here. When an upstream
-  release contains the PR, merging it conflicts in the files above: take upstream's version and delete this entry. If the PR
-  is closed without merging, revert. Check with `python native/usenet/scripts/check_prebuilts.py` and
+  (`git rev-list --reverse --no-merges ee1d3a643..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
+  contains them. When an upstream release contains the PR, merging it conflicts in the files above: take upstream's version
+  and delete this entry. If the PR is closed without merging, revert. Check with
+  `python native/usenet/scripts/check_prebuilts.py` and
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
 
 ## K-08 Blu-ray clips and discs in ExoPlayer (upstream PR #696)
@@ -160,25 +168,3 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 3afa62cd0..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
-
-## K-09 Built-in Usenet among the addons (haaihond/NuvioTV PR #58)
-
-- **Why:** K-07's built-in Usenet results always came after every addon, so *Auto-play first source* only reached them when
-  no addon had a result.
-- **What:** [haaihond/NuvioTV#58](https://github.com/haaihond/NuvioTV/pull/58) by kernexshadow, a follow-up to K-07 proposed
-  to the branch of upstream PR #3511 (`nntp`, base `923913210`, the same head as K-07). One commit, `927023efd`,
-  cherry-picked. The addon list gets a "Built-in Usenet" row (toggle and move buttons, no Remove) once a provider and an
-  indexer are set up; its place orders the results on the stream screen and in the player (next-episode auto-play, stream
-  fallback). The place is stored per profile with the device-local Usenet sources, never in the synced addon order. Built-in
-  Usenet now always comes before plugins. Left out because it relies on upstream `dev` after beta.8: the addon toggles have
-  no `contentDescription` (`toggleLabel` and `cd_enable_addon` do not exist in beta.8), as before.
-- **Files:** new `core/usenet/BuiltInUsenetOrder.kt` and its test; `core/usenet/UsenetSources.kt` (from K-07). Upstream files
-  edited: `ui/screens/addon/{AddonManagerScreen,AddonManagerUiState,AddonManagerViewModel}.kt`,
-  `ui/screens/player/{PlayerRuntimeController,PlayerRuntimeControllerServer,PlayerRuntimeControllerStreams,
-  PlayerViewModel}.kt`, `ui/screens/stream/StreamScreenViewModel.kt`, `res/values/strings.xml`.
-- **Commits:** the commit "knuvio: import haaihond/NuvioTV PR #58 (built-in Usenet among the addons)".
-- **Remove:** revert that commit (before K-07 if both go).
-- **Upstream status:** haaihond/NuvioTV PR #58 (open), into the branch of upstream PR #3511.
-- **Watch:** if the PR is merged into `nntp`, `927023efd` arrives with K-07's next head update: leave it out of that
-  cherry-pick and fold this entry into K-07. If the PR gets more commits, cherry-pick them too. Check with
-  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*'`.
