@@ -152,7 +152,7 @@ k_rgb = k_rgb[box[1]:box[3], box[0]:box[2]]
 k_alpha = k_alpha[box[1]:box[3], box[0]:box[2]]
 
 # ---- "nuvio" text from the upstream wordmark (same typeface, already transparent) ----
-up = Image.open(os.path.join(main_res, "drawable/app_logo_wordmark.png")).convert("RGBA")
+up = Image.open(os.path.join(main_res, "drawable-nodpi/app_logo_wordmark.png")).convert("RGBA")
 ua = np.asarray(up)
 cols = np.where(ua[..., 3].max(0) > 0)[0]
 gap_cols = [c for c in range(300, 420) if c not in set(cols)]
@@ -187,11 +187,11 @@ def wordmark(k_colour):
 
 previews = {}
 previews["wordmark"] = wordmark(k_rgb)
-save(previews["wordmark"], "drawable/app_logo_wordmark.png")
+save(previews["wordmark"], "drawable-nodpi/app_logo_wordmark.png")
 for theme in ("arctic_blue", "gold", "graphite", "jade", "rose_gold"):
     img = wordmark(recolor(k_rgb, theme))
     previews["wordmark_" + theme] = img
-    save(img, f"drawable/app_logo_wordmark_{theme}.png")
+    save(img, f"drawable-nodpi/app_logo_wordmark_{theme}.png")
 
 # ---- Alternative launcher icons and banners ----
 mark_sq = np.asarray(center_crop(to_image(mark), 1)).astype(np.float64) / 255.0

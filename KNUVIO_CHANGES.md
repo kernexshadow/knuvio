@@ -28,13 +28,15 @@ can be dropped from knuvio after merging X.
   - App name "knuvio" in every locale; debug builds show "knuvio Debug".
   - In-app wordmark (`app_logo_wordmark` plus the five themed variants) with the K mark.
   - The five alternative launcher icons and banners (arctic blue, emerald, rose gold, copper, graphite), recoloured K.
-- **Files:** `app/src/full/res/**` (`mipmap-*`, `drawable/`, `values*/strings_knuvio.xml`),
+- **Files:** `app/src/full/res/**` (`mipmap-*`, `drawable/`, `drawable-nodpi/`, `values*/strings_knuvio.xml`),
   `app/src/fullDebug/res/values/strings_knuvio.xml`, `knuvio-branding/**` (source artwork and generator scripts).
 - **Commits:** `a8d06b712`, `dce6f721c`, `f7e032b73`, `17e90709f`.
 - **Remove:** delete the files; the upstream resources in `app/src/main/res` take over.
 - **Upstream status:** knuvio only.
 - **Watch:** a new upstream locale with `app_name` needs its own `strings_knuvio.xml`; a new theme or icon option needs a
-  regenerated variant (see `knuvio-branding/`).
+  regenerated variant (see `knuvio-branding/`). An overlay only replaces an upstream resource with the same qualifiers: if
+  upstream moves an image to another folder (as 1.1.0-beta.9 moved the logos to `drawable-nodpi`), move the overlay and the
+  script paths with it, or upstream's image wins on some screen densities.
 
 ## K-02 Application IDs and updater source
 

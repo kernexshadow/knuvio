@@ -29,7 +29,7 @@ mark = center_crop(Image.open(mark_src).convert("RGB"), 1)
 for density, px in {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}.items():
     save(mark, f"mipmap-{density}/ic_launcher.png", (px, px))
 save(mark, "drawable/ic_launcher.png", (1080, 1080))
-save(mark, "drawable/app_logo_mark.png", (1080, 1080))
+save(mark, "drawable-nodpi/app_logo_mark.png", (1080, 1080))
 
 banner = center_crop(Image.open(banner_src).convert("RGB"), 16 / 9)
 save(banner, "mipmap-xhdpi/banner.png", (320, 180))
