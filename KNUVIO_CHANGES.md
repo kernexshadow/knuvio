@@ -13,6 +13,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
+| `DirectDebridStreamPreparer.kt`, `PlayerRuntimeControllerStreams.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-debrid-link-preparation-off-the-main-thread-upstream-pr-4400) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -168,3 +169,21 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 3afa62cd0..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
+
+## K-10 Debrid link preparation off the main thread (upstream PR #4400)
+
+- **Why:** with "Prepare links" on and a few thousand streams, every prepared link held the main thread for seconds, long
+  enough for an input ANR on a SHIELD.
+- **What:** [NuvioMedia/NuvioTV#4400](https://github.com/NuvioMedia/NuvioTV/pull/4400) by kernexshadow (head `062eb1e61`,
+  based on 1.1.0-beta.9), cherry-picked unchanged. Link preparation runs on `Dispatchers.Default` on the stream screen and
+  in the player's sources and episode panels, and `replacePreparedStream` compares the key fields instead of building a
+  lowercased key for every stream.
+- **Files:** `core/debrid/DirectDebridStreamPreparer.kt`, `ui/screens/player/PlayerRuntimeControllerStreams.kt` (also
+  edited by K-07 and K-08), `ui/screens/stream/StreamScreenViewModel.kt` (also edited by K-07), new
+  `DirectDebridStreamPreparerTest.kt`.
+- **Commits:** cherry-pick of `062eb1e61` (its message ends with "cherry picked from commit …").
+- **Remove:** revert the cherry-pick.
+- **Upstream status:** upstream PR #4400 (open), fixes NuvioMedia/NuvioTV#4399.
+- **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, take upstream's
+  version in a conflict and delete this entry. If the PR is closed without merging, revert. Check with
+  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.debrid.*'`.
