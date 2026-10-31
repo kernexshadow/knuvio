@@ -1526,6 +1526,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                         if (isReleasingPlayer && error.errorCode == PlaybackException.ERROR_CODE_TIMEOUT) return
                         cancelFirstFrameWatchdog()
                         val detailedError = error.toDisplayMessage(context)
+                        if (returnToFeatureAfterExtraFailure(detailedError)) return
                         val usenetResponse = error.findInvalidResponseCodeException()
                         val permanentUsenetFailure = com.nuvio.tv.core.player.isPermanentUsenetHttpFailure(
                             com.nuvio.tv.core.usenet.UsenetSidecar.isSessionUrl(currentStreamUrl),
@@ -1972,6 +1973,11 @@ internal fun PlayerRuntimeController.initializePlayer(
             }
         } catch (e: Exception) {
             if (streamFallbackSession != null && e is kotlinx.coroutines.CancellationException) throw e
+            if (e !is kotlinx.coroutines.CancellationException &&
+                returnToFeatureAfterExtraFailure(e.message ?: e.javaClass.simpleName)
+            ) {
+                return@launch
+            }
             if (
                 maybeAutoSwitchInternalPlayerOnStartupError(
                     detailedError = e.message ?: context.getString(com.nuvio.tv.R.string.player_error_initialize_failed),
