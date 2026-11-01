@@ -1232,6 +1232,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                         // Only mark playbackEnded for real finishes so PlayerScreen does not
                         // dispatch next-episode navigation for short debrid/error placeholders.
                         val naturalEnded = playbackState == Player.STATE_ENDED &&
+                            !isPlayingDiscExtra() &&
                             shouldTreatAsNaturalPlaybackCompletion(
                                 hasRenderedFirstFrame = hasRenderedFirstFrame,
                                 hasFatalError = !_uiState.value.error.isNullOrBlank(),
