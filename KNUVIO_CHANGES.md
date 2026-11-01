@@ -104,9 +104,9 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511) by haaihond, complete at head
-  `ee1d3a643`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings are under
+  `b42ba6f1e`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings are under
   Settings → Integrations → Usenet. The build uses the PR's prebuilt engine for the four ABIs (about 11 MB each, no Go
-  needed); `python native/usenet/scripts/check_prebuilts.py` checks them against the vendored source. The head includes three
+  needed); `python native/usenet/scripts/check_prebuilts.py` checks them against the vendored source. The head includes
   follow-ups by kernexshadow, merged into the PR branch (`nntp`) through haaihond/NuvioTV pull requests:
   - [#58](https://github.com/haaihond/NuvioTV/pull/58): once a provider and an indexer are set up, the addon list gets a
     "Built-in Usenet" row (toggle and move buttons, no Remove). Its place orders the results on the stream screen and in the
@@ -115,10 +115,13 @@ can be dropped from knuvio after merging X.
     always comes before plugins.
   - [#59](https://github.com/haaihond/NuvioTV/pull/59) and [#60](https://github.com/haaihond/NuvioTV/pull/60): the engine
     opens RAR sets stored inside a RAR set; the prebuilt binaries are rebuilt with it.
+  - [#62](https://github.com/haaihond/NuvioTV/pull/62) and [#63](https://github.com/haaihond/NuvioTV/pull/63): the engine
+    returns its memory to the OS after the last session closes (binaries rebuilt); stale Usenet notes are fixed.
 
   How it got here: the PR branch is not merged, because it carries upstream `dev` commits that are in no release. Its diff
   against the `dev` commit it last merged (`7596edc76`) was imported onto 1.1.0-beta.8 as one commit, leaving out the parts
-  that relied on later `dev`; #58, #59 and #60 were cherry-picked (`927023efd`, `e9c3d3d08`, `666cc76e6`). 1.1.0-beta.9
+  that relied on later `dev`; the later follow-ups were cherry-picked (#58 `927023efd`, #59 `e9c3d3d08`, #60 `666cc76e6`, #62 `0456c4ebe` and
+  `5f274e426`, #63 `f10125281`). 1.1.0-beta.9
   contains `7596edc76`, so its merge restored the parts left out, and knuvio now matches the PR head exactly.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
@@ -136,13 +139,13 @@ can be dropped from knuvio after merging X.
   DiagnosticsCard,PlaybackSettingsViewModel,SettingsScreen}.kt`, `ui/screens/stream/{StreamScreen,StreamScreenViewModel}.kt`,
   `res/values/strings.xml`, four existing unit tests and two upstream workflows (disabled in knuvio).
 - **Commits:** "knuvio: import upstream PR #3511 (built-in Usenet streaming)", "knuvio: import haaihond/NuvioTV PR #58
-  (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08` and `666cc76e6`, and the conflict resolution in
-  "Merge upstream 1.1.0-beta.9".
-- **Remove:** revert the two cherry-picks and the two import commits, newest first (K-08 before them if both go). Where a
+  (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08`, `666cc76e6`, `0456c4ebe`, `5f274e426` and
+  `f10125281`, and the conflict resolution in "Merge upstream 1.1.0-beta.9".
+- **Remove:** revert the cherry-picks and the two import commits, newest first (K-08 before them if both go). Where a
   revert conflicts, keep the upstream release's code.
 - **Upstream status:** upstream PR #3511 (open).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges ee1d3a643..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges b42ba6f1e..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. When an upstream release contains the PR, merging it conflicts in the files above: take upstream's version
   and delete this entry. If the PR is closed without merging, revert. Check with
