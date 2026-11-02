@@ -14,6 +14,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 | `DirectDebridStreamPreparer.kt`, `PlayerRuntimeControllerStreams.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-debrid-link-preparation-off-the-main-thread-upstream-pr-4400) |
+| `StreamComponents.kt`, `StreamSourcesSidePanel.kt`, `EpisodesSidePanel.kt`, `StreamScreen.kt` | [K-11](#k-11-addon-tab-focus-on-the-selected-chip-upstream-pr-4424) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -190,3 +191,21 @@ can be dropped from knuvio after merging X.
 - **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, take upstream's
   version in a conflict and delete this entry. If the PR is closed without merging, revert. Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.debrid.*'`.
+
+## K-11 Addon tab focus on the selected chip (upstream PR #4424)
+
+- **Why:** with more addon tabs than fit on screen, switching addon from the stream results left focus on "All" or another
+  tab while the results showed the selected addon, and up from the first result stayed in the list.
+- **What:** [NuvioMedia/NuvioTV#4424](https://github.com/NuvioMedia/NuvioTV/pull/4424) by kernexshadow (head `c8f175cd8`,
+  based on upstream `dev` after 1.1.0-beta.9; no `dev` commit since beta.9 touches its files), cherry-picked unchanged.
+  `focusChip()` scrolls a tab into the row before requesting focus, and every tab focus request goes through it. While
+  focus is in the results, the tab row scrolls only when the selected tab is off screen, instead of snapping back to the
+  first tab. Same change in the player's sources and episodes panels.
+- **Files:** `ui/screens/player/{StreamComponents,StreamSourcesSidePanel,EpisodesSidePanel}.kt`,
+  `ui/screens/stream/StreamScreen.kt` (also edited by K-07, not in the tab row).
+- **Commits:** cherry-pick of `c8f175cd8` (its message ends with "cherry picked from commit …").
+- **Remove:** revert the cherry-pick.
+- **Upstream status:** upstream PR #4424 (open), fixes NuvioMedia/NuvioTV#4423.
+- **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, take upstream's
+  version in a conflict and delete this entry. If the PR is closed without merging, revert. A new tab focus request in
+  knuvio code must go through `focusChip()`.
