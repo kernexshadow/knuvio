@@ -13,8 +13,6 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
-| `DirectDebridStreamPreparer.kt`, `PlayerRuntimeControllerStreams.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-debrid-link-preparation-off-the-main-thread-upstream-pr-4400) |
-| `StreamComponents.kt`, `StreamSourcesSidePanel.kt`, `EpisodesSidePanel.kt`, `StreamScreen.kt` | [K-11](#k-11-addon-tab-focus-on-the-selected-chip-upstream-pr-4424) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -141,10 +139,13 @@ can be dropped from knuvio after merging X.
   `res/values/strings.xml`, four existing unit tests and two upstream workflows (disabled in knuvio).
 - **Commits:** "knuvio: import upstream PR #3511 (built-in Usenet streaming)", "knuvio: import haaihond/NuvioTV PR #58
   (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08`, `666cc76e6`, `0456c4ebe`, `5f274e426` and
-  `f10125281`, and the conflict resolution in "Merge upstream 1.1.0-beta.9".
+  `f10125281`, and the conflict resolutions in "Merge upstream 1.1.0-beta.9" and "Merge upstream 1.1.0-beta.10".
 - **Remove:** revert the cherry-picks and the two import commits, newest first (K-08 before them if both go). Where a
   revert conflicts, keep the upstream release's code.
-- **Upstream status:** upstream PR #3511 (open).
+- **Upstream status:** upstream PR #3511 was closed on 2026-11-01 in favour of
+  [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) (open), the same branch with its history rewritten to drop the
+  engine binaries: Gradle downloads them from a pinned haaihond/NuvioTV release and checks their SHA-256. knuvio still
+  follows #3511 at `b42ba6f1e`. Its merge of 1.1.0-beta.10 resolves the conflicts as #4426 resolves them against `dev`.
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
   (`git rev-list --reverse --no-merges b42ba6f1e..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
@@ -173,39 +174,3 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 3afa62cd0..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
-
-## K-10 Debrid link preparation off the main thread (upstream PR #4400)
-
-- **Why:** with "Prepare links" on and a few thousand streams, every prepared link held the main thread for seconds, long
-  enough for an input ANR on a SHIELD.
-- **What:** [NuvioMedia/NuvioTV#4400](https://github.com/NuvioMedia/NuvioTV/pull/4400) by kernexshadow (head `062eb1e61`,
-  based on 1.1.0-beta.9), cherry-picked unchanged. Link preparation runs on `Dispatchers.Default` on the stream screen and
-  in the player's sources and episode panels, and `replacePreparedStream` compares the key fields instead of building a
-  lowercased key for every stream.
-- **Files:** `core/debrid/DirectDebridStreamPreparer.kt`, `ui/screens/player/PlayerRuntimeControllerStreams.kt` (also
-  edited by K-07 and K-08), `ui/screens/stream/StreamScreenViewModel.kt` (also edited by K-07), new
-  `DirectDebridStreamPreparerTest.kt`.
-- **Commits:** cherry-pick of `062eb1e61` (its message ends with "cherry picked from commit …").
-- **Remove:** revert the cherry-pick.
-- **Upstream status:** upstream PR #4400 (open), fixes NuvioMedia/NuvioTV#4399.
-- **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, take upstream's
-  version in a conflict and delete this entry. If the PR is closed without merging, revert. Check with
-  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.debrid.*'`.
-
-## K-11 Addon tab focus on the selected chip (upstream PR #4424)
-
-- **Why:** with more addon tabs than fit on screen, switching addon from the stream results left focus on "All" or another
-  tab while the results showed the selected addon, and up from the first result stayed in the list.
-- **What:** [NuvioMedia/NuvioTV#4424](https://github.com/NuvioMedia/NuvioTV/pull/4424) by kernexshadow (head `c8f175cd8`,
-  based on upstream `dev` after 1.1.0-beta.9; no `dev` commit since beta.9 touches its files), cherry-picked unchanged.
-  `focusChip()` scrolls a tab into the row before requesting focus, and every tab focus request goes through it. While
-  focus is in the results, the tab row scrolls only when the selected tab is off screen, instead of snapping back to the
-  first tab. Same change in the player's sources and episodes panels.
-- **Files:** `ui/screens/player/{StreamComponents,StreamSourcesSidePanel,EpisodesSidePanel}.kt`,
-  `ui/screens/stream/StreamScreen.kt` (also edited by K-07, not in the tab row).
-- **Commits:** cherry-pick of `c8f175cd8` (its message ends with "cherry picked from commit …").
-- **Remove:** revert the cherry-pick.
-- **Upstream status:** upstream PR #4424 (open), fixes NuvioMedia/NuvioTV#4423.
-- **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, take upstream's
-  version in a conflict and delete this entry. If the PR is closed without merging, revert. A new tab focus request in
-  knuvio code must go through `focusChip()`.
