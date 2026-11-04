@@ -158,19 +158,23 @@ can be dropped from knuvio after merging X.
 
 - **Why:** Blu-ray clips (`.m2ts`) and full disc releases fail in ExoPlayer and need an external player. With this change
   they play in the internal player, also from the built-in Usenet engine of K-07.
-- **What:** [NuvioMedia/NuvioTV#696](https://github.com/NuvioMedia/NuvioTV/pull/696) by kernexshadow (head `3afa62cd0`),
+- **What:** [NuvioMedia/NuvioTV#696](https://github.com/NuvioMedia/NuvioTV/pull/696) by kernexshadow (head `0cf406aed`),
   imported as one commit like K-07: the PR's diff against upstream `dev` `b700cf98e`, applied onto 1.1.0-beta.8 without
   conflicts and without changes. BDAV clips play and seek (EP map from the CLPI), TrueHD and PGS tracks are exposed, track
   languages come from the CLPI, a clip that is part of its feature plays the whole feature, and a disc titles button lists
   the extras. Disc images (`.iso`) play only through the K-07 engine, which serves the disc's files beside the clip.
+  A disc title keeps the player's engine when it restarts playback, an extra that fails returns to the feature, and
+  playlist clips are read with the loopback read timeout.
 - **Files:** new `ui/screens/player/{BdavM2tsDataSource,BdavPgsReader,BdavTrueHdReader,BlurayClipInfo,
   BlurayPlaylistResolver,PlayerRuntimeControllerDiscTitles}.kt` and five tests. Upstream files edited:
   `ui/screens/player/{PlayerMediaSourceFactory,PlayerScreen,PlayerUiState,PostPlayRecommendationState}.kt`, the
-  `PlayerRuntimeController*.kt` files (base, EngineFailover, ErrorRecovery, Initialization, PlaybackEvents, Streams,
-  TrackSelection; most are also edited by K-07), `res/values{,-pt-rPT,-pt-rBR}/strings.xml`.
-- **Commits:** the commit "knuvio: import upstream PR #696 (Blu-ray clips and discs in ExoPlayer)".
-- **Remove:** revert that commit (before K-07 if both go).
+  `PlayerRuntimeController*.kt` files (base, EngineFailover, ErrorRecovery, Initialization, Observers, PlaybackEvents,
+  Streams, TrackSelection; most are also edited by K-07), `res/values{,-pt-rPT,-pt-rBR}/strings.xml`.
+- **Commits:** the commit "knuvio: import upstream PR #696 (Blu-ray clips and discs in ExoPlayer)" and the
+  cherry-picks of `ea3193907`, `0ae08ec0d` and `0cf406aed`. In Initialization and Observers, an extra that fails returns to
+  the feature before K-07's Usenet failure handling and stream fallback run.
+- **Remove:** revert the cherry-picks and that commit, newest first (before K-07 if both go).
 - **Upstream status:** upstream PR #696 (open).
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 3afa62cd0..<new head> ^upstream/dev`). Check with
+  (`git rev-list --reverse --no-merges 0cf406aed..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
