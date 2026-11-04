@@ -8,10 +8,10 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 
 | Upstream file | Changed by |
 |---|---|
-| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
+| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
-| `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-3511) |
+| `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
@@ -98,34 +98,46 @@ can be dropped from knuvio after merging X.
   conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
   Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
 
-## K-07 Built-in Usenet streaming (upstream PR #3511)
+## K-07 Built-in Usenet streaming (upstream PR #4426)
 
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
-- **What:** [NuvioMedia/NuvioTV#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511) by haaihond, complete at head
-  `b42ba6f1e`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings are under
-  Settings → Integrations → Usenet. The build uses the PR's prebuilt engine for the four ABIs (about 11 MB each, no Go
-  needed); `python native/usenet/scripts/check_prebuilts.py` checks them against the vendored source. The head includes
-  follow-ups by kernexshadow, merged into the PR branch (`nntp`) through haaihond/NuvioTV pull requests:
+- **What:** [NuvioMedia/NuvioTV#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) by haaihond (branch `full-nntp`),
+  complete at head `05aeac702`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
+  are under Settings → Integrations → Usenet. The engine binaries for the four ABIs (about 11 MB each) are not in Git: the
+  build downloads them from the GitHub release pinned in `native/usenet/prebuilt/manifest.json` (currently on
+  haaihond/NuvioTV), checks their SHA-256 and caches them in `native/usenet/prebuilt/` (ignored). No Go is needed, but the
+  first build needs network access; `-PbuildUsenetFromSource=true` builds them from the vendored source instead (Go, NDK,
+  CMake). The head includes follow-ups by kernexshadow, merged into the PR branch through haaihond/NuvioTV pull requests:
   - [#58](https://github.com/haaihond/NuvioTV/pull/58): once a provider and an indexer are set up, the addon list gets a
     "Built-in Usenet" row (toggle and move buttons, no Remove). Its place orders the results on the stream screen and in the
     player (next-episode auto-play, stream fallback), so *Auto-play first source* can reach Usenet before the addons below it.
     The place is stored per profile with the device-local Usenet sources, never in the synced addon order. Built-in Usenet
     always comes before plugins.
   - [#59](https://github.com/haaihond/NuvioTV/pull/59) and [#60](https://github.com/haaihond/NuvioTV/pull/60): the engine
-    opens RAR sets stored inside a RAR set; the prebuilt binaries are rebuilt with it.
+    opens RAR sets stored inside a RAR set.
   - [#62](https://github.com/haaihond/NuvioTV/pull/62) and [#63](https://github.com/haaihond/NuvioTV/pull/63): the engine
-    returns its memory to the OS after the last session closes (binaries rebuilt); stale Usenet notes are fixed.
+    returns its memory to the OS after the last session closes; stale Usenet notes are fixed.
+  - [#64](https://github.com/haaihond/NuvioTV/pull/64): every episode is searched on its own, and multi-season packs match
+    each of their seasons.
+  - [#65](https://github.com/haaihond/NuvioTV/pull/65): indexer searches list up to 500 or all results and page by the
+    reported total.
+  - [#66](https://github.com/haaihond/NuvioTV/pull/66) and [#67](https://github.com/haaihond/NuvioTV/pull/67): each listed
+    release's outcome is looked up once, and the release parser's own patterns run on `java.util.regex`.
 
-  How it got here: the PR branch is not merged, because it carries upstream `dev` commits that are in no release. Its diff
-  against the `dev` commit it last merged (`7596edc76`) was imported onto 1.1.0-beta.8 as one commit, leaving out the parts
-  that relied on later `dev`; the later follow-ups were cherry-picked (#58 `927023efd`, #59 `e9c3d3d08`, #60 `666cc76e6`, #62 `0456c4ebe` and
-  `5f274e426`, #63 `f10125281`). 1.1.0-beta.9
-  contains `7596edc76`, so its merge restored the parts left out, and knuvio now matches the PR head exactly.
+  How it got here: the PR branch is not merged, because it can carry upstream `dev` commits that are in no release. knuvio
+  first followed [#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511), the same work with the engine binaries committed:
+  its diff against `dev` `7596edc76` was imported onto 1.1.0-beta.8 as one commit, the follow-ups #58 to #63 were
+  cherry-picked, and 1.1.0-beta.9 restored the parts that relied on later `dev`. haaihond closed #3511 on 2026-11-01 and
+  opened #4426 from a rewritten history without binaries (`b42ba6f1e` there is `f5e7ca7f6`). knuvio then cherry-picked the
+  #4426 commits after `f5e7ca7f6` (the binary download and #64 to #67) and deleted the committed binaries, which remain in
+  knuvio's older history. All `dev` commits in #4426 are in 1.1.0-beta.10, and the beta.10 merge resolves its conflicts as
+  #4426 resolves them, so knuvio matches the PR head exactly.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
-  `BUILT_IN_USENET.md`, `STREAM_FALLBACK.md`, `docs/USENET_SORTING.md`, `.github/workflows/usenet-tests.yml`. Upstream files
+  `BUILT_IN_USENET.md`, `STREAM_FALLBACK.md`, `docs/USENET_SORTING.md`, `tests/usenet_prebuilts_test.py`,
+  `.github/workflows/usenet-tests.yml`. Upstream files
   edited: `app/build.gradle.kts`, `gradle/libs.versions.toml`, `NuvioApplication.kt`, `core/player/{FrameRateUtils,
   StreamAutoPlaySelector,SubtitleFileCache}.kt`, `core/streams/PlaybackAvailability.kt`,
   `data/local/StreamLinkCacheDataStore.kt`, `data/mapper/StreamMapper.kt`, `data/remote/api/TmdbApi.kt`,
@@ -138,19 +150,20 @@ can be dropped from knuvio after merging X.
   DiagnosticsCard,PlaybackSettingsViewModel,SettingsScreen}.kt`, `ui/screens/stream/{StreamScreen,StreamScreenViewModel}.kt`,
   `res/values/strings.xml`, four existing unit tests and two upstream workflows (disabled in knuvio).
 - **Commits:** "knuvio: import upstream PR #3511 (built-in Usenet streaming)", "knuvio: import haaihond/NuvioTV PR #58
-  (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08`, `666cc76e6`, `0456c4ebe`, `5f274e426` and
-  `f10125281`, and the conflict resolutions in "Merge upstream 1.1.0-beta.9" and "Merge upstream 1.1.0-beta.10".
-- **Remove:** revert the cherry-picks and the two import commits, newest first (K-08 before them if both go). Where a
-  revert conflicts, keep the upstream release's code.
-- **Upstream status:** upstream PR #3511 was closed on 2026-11-01 in favour of
-  [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) (open), the same branch with its history rewritten to drop the
-  engine binaries: Gradle downloads them from a pinned haaihond/NuvioTV release and checks their SHA-256. knuvio still
-  follows #3511 at `b42ba6f1e`. Its merge of 1.1.0-beta.10 resolves the conflicts as #4426 resolves them against `dev`.
+  (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08`, `666cc76e6`, `0456c4ebe`, `5f274e426`,
+  `f10125281` (from #3511) and of `965cd752b`, `9d34682e9`, `0e4859f8d`, `4659845a2`, `c3ce4b500`, `d2bb6fc77`,
+  `459578977`, `ee048bb39`, `8026aa4ff`, `45eff47d9` (from #4426), "knuvio: drop the committed Usenet engine binaries",
+  and the conflict resolutions in "Merge upstream 1.1.0-beta.9" and "Merge upstream 1.1.0-beta.10".
+- **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
+  release's code.
+- **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges b42ba6f1e..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 05aeac702..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
-  contains them. When an upstream release contains the PR, merging it conflicts in the files above: take upstream's version
-  and delete this entry. If the PR is closed without merging, revert. Check with
+  contains them. A commit that changes the engine changes `prebuilt/manifest.json` too; its pinned release must exist, or the
+  build fails. If the binaries move to a NuvioMedia release, only the manifest changes. When an upstream release contains the
+  PR, merging it conflicts in the files above: take upstream's version and delete this entry. If the PR is closed without
+  merging, revert. Check with `python native/usenet/scripts/fetch_prebuilts.py`,
   `python native/usenet/scripts/check_prebuilts.py` and
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
 
