@@ -83,7 +83,9 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed audio sync fallback before it is merged: when a subtitle cannot be synced from embedded
   subtitles, it is aligned against the speech in the audio track.
 - **What:** the four commits of [NuvioMedia/NuvioTV#4150](https://github.com/NuvioMedia/NuvioTV/pull/4150) by DavidVamaiotu
-  (head `9d72c7046`), cherry-picked unchanged. The build downloads the sherpa-onnx AAR from GitHub (pinned version and
+  (head `1c523005f`), cherry-picked unchanged at head `9d72c7046`. The author rebased the PR onto 1.1.0-beta.12 as
+  `1c523005f` (same four commits, only adapted to beta.12); the beta.12 merge resolves its conflict as the rebased PR does, so
+  knuvio matches it exactly. The build downloads the sherpa-onnx AAR from GitHub (pinned version and
   SHA-256). On first use the app downloads the speech model, about 74 MB, from the PR author's GitHub release (ORT
   conversion), or from Hugging Face (k2-fsa ONNX files) if that fails; every file is pinned by size and SHA-256.
 - **Files:** new `app/src/main/java/com/nuvio/tv/ui/screens/player/audiosync/**`, its tests,
@@ -91,11 +93,13 @@ can be dropped from knuvio after merging X.
   Upstream files edited: `app/build.gradle.kts`, `app/proguard-rules.pro`, `PlayerRuntimeController{AutomaticSubtitleSync,
   Initialization,Lifecycle,Observers}.kt`, `settings/LicensesAttributionsScreen.kt`, `settings/PlaybackSubtitleSettings.kt`.
 - **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
-  `9d72c7046` (each message ends with "cherry picked from commit …").
-- **Remove:** revert the four cherry-picks, newest first.
+  `9d72c7046` (each message ends with "cherry picked from commit …"), and the conflict resolution in "Merge upstream
+  1.1.0-beta.12".
+- **Remove:** revert the four cherry-picks, newest first. Where a revert conflicts, keep the upstream release's code.
 - **Upstream status:** upstream PR #4150 (open).
-- **Watch:** if the PR gets more commits, cherry-pick them too. When an upstream release contains the PR, merging it may
-  conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
+- **Watch:** if the PR gets more commits, cherry-pick them too. If it is rebased again, compare the PR head's files with
+  knuvio (`git diff <head> -- <PR files>`): only other knuvio changes may differ. When an upstream release contains the PR,
+  merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
   Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
 
 ## K-07 Built-in Usenet streaming (upstream PR #4426)
