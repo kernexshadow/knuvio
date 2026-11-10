@@ -88,17 +88,24 @@ can be dropped from knuvio after merging X.
   knuvio matches it exactly. The build downloads the sherpa-onnx AAR from GitHub (pinned version and
   SHA-256). On first use the app downloads the speech model, about 74 MB, from the PR author's GitHub release (ORT
   conversion), or from Hugging Face (k2-fsa ONNX files) if that fails; every file is pinned by size and SHA-256.
+  Plus `d56f38a18`, our fix proposed into the PR's branch as
+  [DavidVamaiotu/NuvioTV-Reshaped#70](https://github.com/DavidVamaiotu/NuvioTV-Reshaped/pull/70): when the audio sync tests
+  other subtitles, regional variants stay apart, so a pt-PT subtitle is never swapped for a pt-BR one (same for es-419 and
+  Traditional Chinese). It only changes `SubtitleCandidatePool.languageKey` and its test.
 - **Files:** new `app/src/main/java/com/nuvio/tv/ui/screens/player/audiosync/**`, its tests,
   `res/raw/silero_vad_v5_16k.bin`, `res/values/audio_sync_strings.xml`, `assets/licenses/audio_sync_NOTICE.md`.
   Upstream files edited: `app/build.gradle.kts`, `app/proguard-rules.pro`, `PlayerRuntimeController{AutomaticSubtitleSync,
   Initialization,Lifecycle,Observers}.kt`, `settings/LicensesAttributionsScreen.kt`, `settings/PlaybackSubtitleSettings.kt`.
 - **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
-  `9d72c7046` (each message ends with "cherry picked from commit …"), and the conflict resolution in "Merge upstream
-  1.1.0-beta.12".
-- **Remove:** revert the four cherry-picks, newest first. Where a revert conflicts, keep the upstream release's code.
-- **Upstream status:** upstream PR #4150 (open).
+  `9d72c7046` (each message ends with "cherry picked from commit …"), the conflict resolution in "Merge upstream
+  1.1.0-beta.12", and `a8752a302` (cherry-pick of `d56f38a18`, PR #70).
+- **Remove:** revert `a8752a302`, then the four cherry-picks, newest first. Where a revert conflicts, keep the upstream
+  release's code.
+- **Upstream status:** upstream PR #4150 (open). The regional-language fix is PR #70 into its branch (open).
 - **Watch:** if the PR gets more commits, cherry-pick them too. If it is rebased again, compare the PR head's files with
-  knuvio (`git diff <head> -- <PR files>`): only other knuvio changes may differ. When an upstream release contains the PR,
+  knuvio (`git diff <head> -- <PR files>`): only other knuvio changes may differ. Once #70 is merged, the PR head contains
+  `d56f38a18` or a rebased copy, and the comparison must then show no difference in `SubtitleCandidatePool*`. If #70 is
+  declined, keep `a8752a302` as a knuvio-only fix on top of the PR. When an upstream release contains the PR,
   merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
   Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
 
