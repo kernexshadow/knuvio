@@ -114,7 +114,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) by haaihond (branch `full-nntp`),
-  complete at head `8f451a88b`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
+  complete at head `b44f3b913`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
   are under Settings → Integrations → Usenet. The engine binaries for the four ABIs (about 11 MB each) are not in Git: the
   build downloads them from the GitHub release pinned in `native/usenet/prebuilt/manifest.json` (currently on
   haaihond/NuvioTV), checks their SHA-256 and caches them in `native/usenet/prebuilt/` (ignored). No Go is needed, but the
@@ -137,6 +137,16 @@ can be dropped from knuvio after merging X.
     release's outcome is looked up once, and the release parser's own patterns run on `java.util.regex`.
   - [#69](https://github.com/haaihond/NuvioTV/pull/69): the first time a profile turns on built-in indexer search, a notice
     explains that searches and downloads go directly from the device with the user's own accounts and cost API hits.
+  - [#70](https://github.com/haaihond/NuvioTV/pull/70): a release kept for Reuse Last Link no longer stores its indexer's
+    API key (it refers to the indexer, and links kept by earlier versions are rewritten); each profile's sources are
+    decrypted once and then read from memory.
+  - [#72](https://github.com/haaihond/NuvioTV/pull/72) and [#73](https://github.com/haaihond/NuvioTV/pull/73): Usenet
+    diagnostics show statistics per indexer (searches, API requests, response time, NZB downloads, playback outcome) and
+    per provider (articles served and missing, bytes, errors, opens that failed because of it), for 7 days, 30 days or all
+    time, and for movies, shows or both.
+  - [#74](https://github.com/haaihond/NuvioTV/pull/74): with the NZB cache on, the engine opens NZBs beyond the in-memory
+    limits (up to 2,000,000 articles and 256 MiB of XML), and plays an episode from a season of Blu-ray discs posted
+    without folders.
 
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
   (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
@@ -148,13 +158,16 @@ can be dropped from knuvio after merging X.
   opened #4426 from a rewritten history without binaries (`b42ba6f1e` there is `f5e7ca7f6`). knuvio then cherry-picked the
   #4426 commits after `f5e7ca7f6` (the binary download and #64 to #67) and deleted the committed binaries, which remain in
   knuvio's older history. All `dev` commits in #4426 are in 1.1.0-beta.10, and the beta.10 merge resolves its conflicts as
-  #4426 resolves them, so knuvio matches the PR head exactly. The same holds after the PR's later `dev` merges: the newest,
-  in `8f451a88b`, is contained in 1.1.0-beta.13.
+  #4426 resolves them, so knuvio matches the PR head exactly. The same holds after the PR's later `dev` merges up to
+  `8f451a88b`, which are contained in 1.1.0-beta.13. The merges in `6ca8894c1` and `48b0a2488` bring `dev` past 1.1.0 (up
+  to `01759ead3`) and are left out. No Usenet change relies on them: against the PR head, the files the PR commits touch
+  differ only by that `dev` code (in `StreamLinkCacheDataStore`, `NuvioMpvSurfaceView`, `StreamScreenViewModel`,
+  `PlayerMediaSourceFactory`, `PlayerRuntimeControllerInitialization`) and by K-02, K-06 and K-08.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
   `BUILT_IN_USENET.md`, `STREAM_FALLBACK.md`, `docs/USENET_SORTING.md`, `tests/usenet_prebuilts_test.py`,
-  `.github/workflows/usenet-tests.yml`. Upstream files
+  `.github/workflows/usenet-tests.yml`, `.github/workflows/usenet-native-assets.yml`. Upstream files
   edited: `app/build.gradle.kts`, `gradle/libs.versions.toml`, `NuvioApplication.kt`, `core/player/{FrameRateUtils,
   StreamAutoPlaySelector,SubtitleFileCache}.kt`, `core/streams/PlaybackAvailability.kt`,
   `data/local/StreamLinkCacheDataStore.kt`, `data/mapper/StreamMapper.kt`, `data/remote/api/TmdbApi.kt`,
@@ -169,14 +182,15 @@ can be dropped from knuvio after merging X.
 - **Commits:** "knuvio: import upstream PR #3511 (built-in Usenet streaming)", "knuvio: import haaihond/NuvioTV PR #58
   (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08`, `666cc76e6`, `0456c4ebe`, `5f274e426`,
   `f10125281` (from #3511) and of `965cd752b`, `9d34682e9`, `0e4859f8d`, `4659845a2`, `c3ce4b500`, `d2bb6fc77`,
-  `459578977`, `ee048bb39`, `8026aa4ff`, `45eff47d9`, `99fcc5cba`, `86f0bd10b`, `b0a3130cf`, `d1052741e`, `e61634f9a`
-  (from #4426), "knuvio: drop the committed Usenet engine binaries",
+  `459578977`, `ee048bb39`, `8026aa4ff`, `45eff47d9`, `99fcc5cba`, `86f0bd10b`, `b0a3130cf`, `d1052741e`, `e61634f9a`,
+  `89c510292`, `ee8117851`, `4f133e7b5`, `2db3c481f`, `dcbff8aa9`, `c2c5b3b0f`, `9d70bbe26`, `963e073fd`, `09a55f3d3`,
+  `2d8aa575e`, `0fa315835`, `24fde2a74` (from #4426), "knuvio: drop the committed Usenet engine binaries",
   and the conflict resolutions in "Merge upstream 1.1.0-beta.9" and "Merge upstream 1.1.0-beta.10".
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
 - **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 8f451a88b..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges b44f3b913..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. A commit that changes the engine changes `prebuilt/manifest.json` too; its pinned release must exist, or the
   build fails. If the binaries move to a NuvioMedia release, only the manifest changes. When an upstream release contains the
