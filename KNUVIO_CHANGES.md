@@ -114,7 +114,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) by haaihond (branch `full-nntp`),
-  complete at head `b44f3b913`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
+  complete at head `1b90fcfe4`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
   are under Settings → Integrations → Usenet. The engine binaries for the four ABIs (about 11 MB each) are not in Git: the
   build downloads them from the GitHub release pinned in `native/usenet/prebuilt/manifest.json` (currently on
   haaihond/NuvioTV), checks their SHA-256 and caches them in `native/usenet/prebuilt/` (ignored). No Go is needed, but the
@@ -147,6 +147,7 @@ can be dropped from knuvio after merging X.
   - [#74](https://github.com/haaihond/NuvioTV/pull/74): with the NZB cache on, the engine opens NZBs beyond the in-memory
     limits (up to 2,000,000 articles and 256 MiB of XML), and plays an episode from a season of Blu-ray discs posted
     without folders.
+  - [#75](https://github.com/haaihond/NuvioTV/pull/75): a Usenet source keeps its statistics when it is edited.
 
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
   (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
@@ -159,10 +160,10 @@ can be dropped from knuvio after merging X.
   #4426 commits after `f5e7ca7f6` (the binary download and #64 to #67) and deleted the committed binaries, which remain in
   knuvio's older history. All `dev` commits in #4426 are in 1.1.0-beta.10, and the beta.10 merge resolves its conflicts as
   #4426 resolves them, so knuvio matches the PR head exactly. The same holds after the PR's later `dev` merges up to
-  `8f451a88b`, which are contained in 1.1.0-beta.13. The merges in `6ca8894c1` and `48b0a2488` bring `dev` past 1.1.0 (up
-  to `01759ead3`) and are left out. No Usenet change relies on them: against the PR head, the files the PR commits touch
-  differ only by that `dev` code (in `StreamLinkCacheDataStore`, `NuvioMpvSurfaceView`, `StreamScreenViewModel`,
-  `PlayerMediaSourceFactory`, `PlayerRuntimeControllerInitialization`) and by K-02, K-06 and K-08.
+  `8f451a88b`, which are contained in 1.1.0-beta.13. The merges in `6ca8894c1` and `48b0a2488` (`dev` up to `01759ead3`)
+  were left out of the 1.1.0 revisions and are contained in 1.2.0-beta.1. Its merge conflicted only in the imports of
+  `NuvioMpvSurfaceView`, resolved as the PR resolves them, so knuvio matches the PR head again, apart from K-02, K-06,
+  K-08 and the `dev` code that 1.2.0-beta.1 adds after `01759ead3`.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
@@ -184,13 +185,14 @@ can be dropped from knuvio after merging X.
   `f10125281` (from #3511) and of `965cd752b`, `9d34682e9`, `0e4859f8d`, `4659845a2`, `c3ce4b500`, `d2bb6fc77`,
   `459578977`, `ee048bb39`, `8026aa4ff`, `45eff47d9`, `99fcc5cba`, `86f0bd10b`, `b0a3130cf`, `d1052741e`, `e61634f9a`,
   `89c510292`, `ee8117851`, `4f133e7b5`, `2db3c481f`, `dcbff8aa9`, `c2c5b3b0f`, `9d70bbe26`, `963e073fd`, `09a55f3d3`,
-  `2d8aa575e`, `0fa315835`, `24fde2a74` (from #4426), "knuvio: drop the committed Usenet engine binaries",
-  and the conflict resolutions in "Merge upstream 1.1.0-beta.9" and "Merge upstream 1.1.0-beta.10".
+  `2d8aa575e`, `0fa315835`, `24fde2a74`, `da950d354` (from #4426), "knuvio: drop the committed Usenet engine binaries",
+  and the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10" and "Merge upstream
+  1.2.0-beta.1".
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
 - **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges b44f3b913..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 1b90fcfe4..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. A commit that changes the engine changes `prebuilt/manifest.json` too; its pinned release must exist, or the
   build fails. If the binaries move to a NuvioMedia release, only the manifest changes. When an upstream release contains the
@@ -198,28 +200,34 @@ can be dropped from knuvio after merging X.
   merging, revert. Check with `python native/usenet/scripts/fetch_prebuilts.py`,
   `python native/usenet/scripts/check_prebuilts.py` and
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
+- **Watch, two source fallbacks:** 1.2.0-beta.1 adds upstream's own fallback to the next matching source
+  (`PlayerRuntimeControllerSourceFallback.kt`, from NuvioMedia/NuvioTV#4581, `c3a27b5e2`), next to this PR's
+  `StreamFallbackSession`. The PR has not merged that `dev` yet, so nothing reconciles the two. Both are off by default.
+  With both on, in ExoPlayer's error handling a permanent Usenet failure goes to the PR's fallback first and any other
+  error before the first frame to upstream's. When the PR merges `dev` past `c3a27b5e2`, take its resolution.
 
 ## K-08 Blu-ray clips and discs in ExoPlayer (upstream PR #696)
 
 - **Why:** Blu-ray clips (`.m2ts`) and full disc releases fail in ExoPlayer and need an external player. With this change
   they play in the internal player, also from the built-in Usenet engine of K-07.
-- **What:** [NuvioMedia/NuvioTV#696](https://github.com/NuvioMedia/NuvioTV/pull/696) by kernexshadow (head `0cf406aed`),
+- **What:** [NuvioMedia/NuvioTV#696](https://github.com/NuvioMedia/NuvioTV/pull/696) by kernexshadow (head `98e05d4ea`),
   imported as one commit like K-07: the PR's diff against upstream `dev` `b700cf98e`, applied onto 1.1.0-beta.8 without
   conflicts and without changes. BDAV clips play and seek (EP map from the CLPI), TrueHD and PGS tracks are exposed, track
   languages come from the CLPI, a clip that is part of its feature plays the whole feature, and a disc titles button lists
   the extras. Disc images (`.iso`) play only through the K-07 engine, which serves the disc's files beside the clip.
-  A disc title keeps the player's engine when it restarts playback, an extra that fails returns to the feature, and
-  playlist clips are read with the loopback read timeout.
+  A disc title keeps the player's engine when it restarts playback, an extra that fails or ends returns to the feature,
+  and playlist clips are read with the loopback read timeout.
 - **Files:** new `ui/screens/player/{BdavM2tsDataSource,BdavPgsReader,BdavTrueHdReader,BlurayClipInfo,
   BlurayPlaylistResolver,PlayerRuntimeControllerDiscTitles}.kt` and five tests. Upstream files edited:
-  `ui/screens/player/{PlayerMediaSourceFactory,PlayerScreen,PlayerUiState,PostPlayRecommendationState}.kt`, the
-  `PlayerRuntimeController*.kt` files (base, EngineFailover, ErrorRecovery, Initialization, Observers, PlaybackEvents,
-  Streams, TrackSelection; most are also edited by K-07), `res/values{,-pt-rPT,-pt-rBR}/strings.xml`.
+  `ui/screens/player/{PlayerMediaSourceFactory,PlayerScreen,PlayerUiState,PostPlayRecommendationController,
+  PostPlayRecommendationState}.kt`, the `PlayerRuntimeController*.kt` files (base, EngineFailover, ErrorRecovery,
+  Initialization, Metadata, Observers, PlaybackEvents, Streams, TrackSelection; most are also edited by K-07),
+  `res/values{,-pt-rPT,-pt-rBR}/strings.xml`.
 - **Commits:** the commit "knuvio: import upstream PR #696 (Blu-ray clips and discs in ExoPlayer)" and the
-  cherry-picks of `ea3193907`, `0ae08ec0d` and `0cf406aed`. In Initialization and Observers, an extra that fails returns to
+  cherry-picks of `ea3193907`, `0ae08ec0d`, `0cf406aed` and `98e05d4ea`. In Initialization and Observers, an extra that fails returns to
   the feature before K-07's Usenet failure handling and stream fallback run.
 - **Remove:** revert the cherry-picks and that commit, newest first (before K-07 if both go).
 - **Upstream status:** upstream PR #696 (open).
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 0cf406aed..<new head> ^upstream/dev`). Check with
+  (`git rev-list --reverse --no-merges 98e05d4ea..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
