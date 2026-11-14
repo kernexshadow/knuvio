@@ -14,6 +14,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 | Updater files listed in K-09 | [K-09](#k-09-updater-explain-optimized-installs-offer-the-system-installer-upstream-pr-4622) |
+| `PlayerRuntimeControllerAutomaticSubtitleSync.kt` and the `autosync_toast_no_fit` strings | [K-10](#k-10-no-autosync-or-audio-sync-toasts) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -111,7 +112,8 @@ can be dropped from knuvio after merging X.
   still open.
 - **Watch:** if the PR gets more commits, cherry-pick the ones after `51aedfe85`. If it is rebased again, compare the PR
   head's files with knuvio (`git diff <head> -- $(git diff --name-only <base> <head>)`): only other knuvio changes may
-  differ, and nothing in `audiosync/` or `SubtitleCandidatePool*`. When an upstream release contains the PR,
+  differ, and nothing in `audiosync/` or `SubtitleCandidatePool*` apart from K-10's removal of the result toasts. When an
+  upstream release contains the PR,
   merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
   Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
 
@@ -270,3 +272,24 @@ can be dropped from knuvio after merging X.
 - **Upstream status:** merged into upstream `dev` as `a3532b819` on 2026-11-13, in no release yet. Once an upstream release
   contains it, its merge brings the same changes (take upstream's version if anything conflicts) and this entry can be
   deleted.
+
+## K-10 No AutoSync or audio sync toasts
+
+- **Why:** the user does not want sync messages over playback. A subtitle that cannot be synced stays as selected, as
+  before; a synced one still shows the "Auto synced" chip in the subtitle list.
+- **What:** two parts.
+  - AutoSync (upstream code): the "Sync failed: these subtitles don't match this version of the video" toast, its helpers
+    and the `autosync_toast_no_fit` string in every locale are removed. Prepared for upstream on kernexshadow/NuvioTV
+    branch `fix/autosync-no-toasts` (`e4b42f421`, from `dev` `c19a0e87a`); knuvio has its cherry-pick, where the conflicts
+    with K-06 keep the audio sync takeover and drop only the toasts.
+  - Audio sync (on top of K-06): the "Subtitles synced to audio" and "Couldn't sync subtitles to audio" toasts,
+    `AudioSyncResultToasts` and its test, and both strings are removed. The no-match log line after five minutes stays.
+    knuvio only for now; it could be proposed into the PR #4150 branch as #70 was.
+- **Files (upstream):** `ui/screens/player/PlayerRuntimeControllerAutomaticSubtitleSync.kt`, `res/values*/strings.xml`
+  (13 locales here, 15 on `dev`). Files of K-06: `audiosync/AudioSyncFallback.kt`, `res/values/audio_sync_strings.xml`,
+  deleted `audiosync/AudioSyncResultToasts.kt` and `AudioSyncResultToastsTest.kt`.
+- **Commits:** the cherry-pick of `e4b42f421` and "knuvio: drop the audio sync result toasts".
+- **Remove:** revert both, newest first.
+- **Upstream status:** AutoSync part: upstream PR not opened yet. Audio sync part: knuvio only.
+- **Watch:** a new AutoSync failure toast upstream, or a new `reportResult` call in a PR #4150 update, brings a toast back:
+  drop it again. When the upstream PR is merged and released, take upstream's version and keep only the audio sync part.
