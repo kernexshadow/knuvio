@@ -13,6 +13,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
+| Updater files listed in K-09 | [K-09](#k-09-updater-explain-optimized-installs-offer-the-system-installer-upstream-pr-4622) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -248,3 +249,24 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 98e05d4ea..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
+
+## K-09 Updater: explain optimized installs, offer the system installer (upstream PR #4622)
+
+- **Why:** an update installed from the banner with its baseline profile closes the app for 30–55 s and leaves the TV on the
+  home screen, which looks like a crash. Bring the fix in before an upstream release contains it.
+- **What:** [NuvioMedia/NuvioTV#4622](https://github.com/NuvioMedia/NuvioTV/pull/4622) by kernexshadow (head `59313c18f`),
+  its two commits cherry-picked unchanged. The banner says the app closes while the update installs (on Android 9 it also
+  reopens by itself, through a `MY_PACKAGE_REPLACED` receiver that launches `context.packageName`, so it works with the
+  knuvio app IDs). A new About setting, "Optimize updates during install" (on by default), sends installs the user starts
+  through Android's installer screen when turned off; Android 7 and 8 always use that screen. Cancelling the install
+  confirmation no longer brings up two more prompts. The other `dev` commits on the PR's branch are left to the next
+  upstream release.
+- **Files (upstream):** `app/src/full/AndroidManifest.xml`, `app/src/full/java/com/nuvio/tv/updater/{ApkInstaller,
+  UpdateInstallResultReceiver,UpdatePreferences,UpdateViewModel}.kt`, `updater/ui/UpdateBanner.kt`, new
+  `updater/UpdateRelaunchReceiver.kt`, `app/src/playstore/java/com/nuvio/tv/updater/UpdateViewModel.kt`,
+  `ui/screens/settings/UpdateChannelSettings.kt`, `res/values/strings.xml`.
+- **Commits:** cherry-picks of `64cfb8138` and `59313c18f`.
+- **Remove:** revert the two cherry-picks, newest first.
+- **Upstream status:** merged into upstream `dev` as `a3532b819` on 2026-11-13, in no release yet. Once an upstream release
+  contains it, its merge brings the same changes (take upstream's version if anything conflicts) and this entry can be
+  deleted.
