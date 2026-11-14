@@ -279,17 +279,18 @@ can be dropped from knuvio after merging X.
   before; a synced one still shows the "Auto synced" chip in the subtitle list.
 - **What:** two parts.
   - AutoSync (upstream code): the "Sync failed: these subtitles don't match this version of the video" toast, its helpers
-    and the `autosync_toast_no_fit` string in every locale are removed. Prepared for upstream on kernexshadow/NuvioTV
-    branch `fix/autosync-no-toasts` (`e4b42f421`, from `dev` `c19a0e87a`); knuvio has its cherry-pick, where the conflicts
-    with K-06 keep the audio sync takeover and drop only the toasts.
+    and the `autosync_toast_no_fit` string in every locale are removed. Written against upstream `dev` `c19a0e87a` as
+    `e4b42f421` (a local commit, never published) and applied here as `765cdabe9`, where the conflicts with K-06 keep the
+    audio sync takeover and drop only the toasts.
   - Audio sync (on top of K-06): the "Subtitles synced to audio" and "Couldn't sync subtitles to audio" toasts,
     `AudioSyncResultToasts` and its test, and both strings are removed. The no-match log line after five minutes stays.
-    knuvio only for now; it could be proposed into the PR #4150 branch as #70 was.
 - **Files (upstream):** `ui/screens/player/PlayerRuntimeControllerAutomaticSubtitleSync.kt`, `res/values*/strings.xml`
   (13 locales here, 15 on `dev`). Files of K-06: `audiosync/AudioSyncFallback.kt`, `res/values/audio_sync_strings.xml`,
   deleted `audiosync/AudioSyncResultToasts.kt` and `AudioSyncResultToastsTest.kt`.
-- **Commits:** the cherry-pick of `e4b42f421` and "knuvio: drop the audio sync result toasts".
+- **Commits:** `765cdabe9` ("fix(autosync): stay silent when the subtitle does not fit the video") and "knuvio: drop the
+  audio sync result toasts".
 - **Remove:** revert both, newest first.
-- **Upstream status:** AutoSync part: upstream PR not opened yet. Audio sync part: knuvio only.
-- **Watch:** a new AutoSync failure toast upstream, or a new `reportResult` call in a PR #4150 update, brings a toast back:
-  drop it again. When the upstream PR is merged and released, take upstream's version and keep only the audio sync part.
+- **Upstream status:** knuvio only, not meant for upstream.
+- **Watch:** a new AutoSync failure toast in an upstream release, or a new `reportResult` call in a PR #4150 update, brings
+  a toast back: drop it again. Upstream edits near the removed calls in `PlayerRuntimeControllerAutomaticSubtitleSync.kt`
+  will conflict: keep upstream's code without the toast.
