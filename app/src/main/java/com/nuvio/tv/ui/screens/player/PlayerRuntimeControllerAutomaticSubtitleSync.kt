@@ -1,10 +1,15 @@
 package com.nuvio.tv.ui.screens.player
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import androidx.media3.common.C
 import androidx.media3.common.MimeTypes
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.ExtractorsFactory
+import com.nuvio.tv.R
 import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncFallback
 import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncSettings
 import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncTaps
@@ -33,6 +38,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
+/** Thin TV adapter around the feature-owned Mobile AutoSync V2 pipeline. */
+private val autoSyncToastHandler = Handler(Looper.getMainLooper())
+
+private fun PlayerRuntimeController.showAutoSyncToast(
+    message: String,
+    duration: Int = Toast.LENGTH_SHORT,
+) {
+    autoSyncToastHandler.post {
+        Toast.makeText(context, message, duration).show()
+    }
+}
 /**
  * Wraps Nuvio's extractors so AutoSync can observe embedded subtitle timing (output is forwarded
  * unchanged), and starts AutoSync's embedded subtitle index download while the stream opens.
@@ -218,6 +234,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(
                     audioFallback?.takeOver(selectedUrl) == true
                 if (!audioTakesOver) {
                     audioFallback?.disarm()
+                    context.buildAutoSyncFailureToast(analysisOutcome)?.let(::showAutoSyncToast)
                 }
                 return@launch
             }
@@ -392,6 +409,9 @@ private fun PlayerRuntimeController.runMpvAutomaticSubtitleSync(
                 if (activeSubtitleUrl == selectedUrl) {
                     audioTookOver = analysisOutcome != AutoSyncAnalysisOutcome.SUBTITLE_UNAVAILABLE &&
                         audioFallback?.takeOver(selectedUrl) == true
+                    if (!audioTookOver) {
+                        context.buildAutoSyncFailureToast(analysisOutcome)?.let(::showAutoSyncToast)
+                    }
                 }
                 return@launch
             }
@@ -548,6 +568,9 @@ private fun PlayerRuntimeController.runLibassAutomaticSubtitleSync(
             val activeSubtitleUrl = _uiState.value.selectedAddonSubtitle?.url
             if (resolved == null) {
                 Log.d(PlayerRuntimeController.TAG, "AUTO_SYNC_V2 libass no match outcome=$analysisOutcome")
+                if (activeSubtitleUrl == selectedUrl) {
+                    context.buildAutoSyncFailureToast(analysisOutcome)?.let(::showAutoSyncToast)
+                }
                 return@launch
             }
             if (activeSubtitleUrl != selectedUrl && activeSubtitleUrl != resolved.subtitleUrl) {
@@ -699,3 +722,20 @@ private fun Subtitle.toAutoSyncCandidate() = AutoSyncSubtitleCandidate(
     language = lang,
     name = addonName.ifBlank { id },
 )
+
+/**
+ * The one AutoSync result worth telling the viewer: the subtitle was checked against this video's
+ * own subtitles and does not fit them, so it stays out of sync with this release, and another
+ * stream may fit it. Any other failure is technical or inconclusive and stays silent; the viewer
+ * can still adjust the timing by hand.
+ */
+private fun Context.buildAutoSyncFailureToast(analysisOutcome: AutoSyncAnalysisOutcome?): String? =
+    when (analysisOutcome) {
+        AutoSyncAnalysisOutcome.NO_FIT -> getString(R.string.autosync_toast_no_fit)
+        AutoSyncAnalysisOutcome.SUBTITLE_UNAVAILABLE,
+        AutoSyncAnalysisOutcome.NO_SUBTITLE_TRACKS,
+        AutoSyncAnalysisOutcome.NO_USABLE_REFERENCE,
+        AutoSyncAnalysisOutcome.INCONCLUSIVE,
+        null,
+        -> null
+    }
