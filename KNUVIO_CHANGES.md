@@ -124,7 +124,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) by haaihond (branch `full-nntp`),
-  complete at head `349264aef`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
+  complete at head `1f376f150`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
   are under Settings → Integrations → Usenet. The engine binaries for the four ABIs (about 11 MB each) are not in Git: the
   build downloads them from the GitHub release pinned in `native/usenet/prebuilt/manifest.json` (currently on
   haaihond/NuvioTV), checks their SHA-256 and caches them in `native/usenet/prebuilt/` (ignored). No Go is needed, but the
@@ -168,6 +168,10 @@ can be dropped from knuvio after merging X.
     failed.
   - [#81](https://github.com/haaihond/NuvioTV/pull/81): a video split into numbered parts without an archive plays as one
     file, and a stored RAR entry without a video extension is recognised by its first bytes.
+  - [#83](https://github.com/haaihond/NuvioTV/pull/83): a large obfuscated 7z set (16 or more volumes numbered in their
+    subjects) is taken in NZB subject order once a spread sample of volumes confirms the predicted names, instead of
+    reading every volume's first article first (481 volumes: about 355 MB and 7–23 s before playback). Each other volume
+    is checked against its predicted name when first read. Engine binaries rebuilt (`usenet-native-82bc215e7261022b`).
 
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
   (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
@@ -183,7 +187,11 @@ can be dropped from knuvio after merging X.
   `8f451a88b`, which are contained in 1.1.0-beta.13. The merges in `6ca8894c1` and `48b0a2488` (`dev` up to `01759ead3`)
   were left out of the 1.1.0 revisions and are contained in 1.2.0-beta.1. Its merge conflicted only in the imports of
   `NuvioMpvSurfaceView`, resolved as the PR resolves them, so knuvio matches the PR head again, apart from K-02, K-06,
-  K-08 and the `dev` code that 1.2.0-beta.1 adds after `01759ead3`.
+  K-08 and the `dev` code that 1.2.0-beta.1 adds after `01759ead3`. The PR then merged `dev` up to `e0e830b60`
+  (`635bc983c`, `e9e95ec98`), which contains 1.2.0-beta.1, so those beta.1 differences are gone. Both merges are left out:
+  their conflict resolutions in `PlayerRuntimeControllerStreams.kt`, `StreamScreenViewModel.kt` and
+  `AddonManagerViewModel.kt` fit the PR to `dev` code after 1.2.0-beta.1 (#4624's auto-play fallback for the next
+  episode and on the stream screen, #4629, #4633), and come with the next upstream release that contains it.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
@@ -206,7 +214,7 @@ can be dropped from knuvio after merging X.
   `459578977`, `ee048bb39`, `8026aa4ff`, `45eff47d9`, `99fcc5cba`, `86f0bd10b`, `b0a3130cf`, `d1052741e`, `e61634f9a`,
   `89c510292`, `ee8117851`, `4f133e7b5`, `2db3c481f`, `dcbff8aa9`, `c2c5b3b0f`, `9d70bbe26`, `963e073fd`, `09a55f3d3`,
   `2d8aa575e`, `0fa315835`, `24fde2a74`, `da950d354`, `c3b21ab4c`, `6ffe8fef2`, `2600817af`, `30ba4e35a`, `1c8c83b42`,
-  `cd37250b9`, `0b662dda0`, `78eb82f38`, `b6994ac6e`, `a6a88d7ab`, `814986a9f` (from #4426; `0b662dda0` and `78eb82f38`
+  `cd37250b9`, `0b662dda0`, `78eb82f38`, `b6994ac6e`, `a6a88d7ab`, `814986a9f`, `ee21a9816`, `1c4a60c50` (from #4426; `0b662dda0` and `78eb82f38`
   rebuilt the engine on parallel branches, so their `manifest.json` conflicts were resolved with each commit's version), "knuvio: drop the committed Usenet engine binaries",
   and the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10" and "Merge upstream
   1.2.0-beta.1".
@@ -214,7 +222,7 @@ can be dropped from knuvio after merging X.
   release's code.
 - **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 349264aef..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 1f376f150..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. A commit that changes the engine changes `prebuilt/manifest.json` too; its pinned release must exist, or the
   build fails. If the binaries move to a NuvioMedia release, only the manifest changes. When an upstream release contains the
@@ -224,9 +232,10 @@ can be dropped from knuvio after merging X.
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
 - **Watch, two source fallbacks:** 1.2.0-beta.1 adds upstream's own fallback to the next matching source
   (`PlayerRuntimeControllerSourceFallback.kt`, from NuvioMedia/NuvioTV#4581, `c3a27b5e2`), next to this PR's
-  `StreamFallbackSession`. The PR has not merged that `dev` yet, so nothing reconciles the two. Both are off by default.
-  With both on, in ExoPlayer's error handling a permanent Usenet failure goes to the PR's fallback first and any other
-  error before the first frame to upstream's. When the PR merges `dev` past `c3a27b5e2`, take its resolution.
+  `StreamFallbackSession`. Both are off by default. With both on, in ExoPlayer's error handling a permanent Usenet
+  failure goes to the PR's fallback first and any other error before the first frame to upstream's; the PR, now past
+  `c3a27b5e2`, does the same. Its other reconciliation (upstream's auto-play fallback leaves Usenet sources to the PR's
+  own) is in the left-out `dev` merges above, because the code it changes arrives after 1.2.0-beta.1 (#4624).
 
 ## K-08 Blu-ray clips and discs in ExoPlayer (upstream PR #696)
 
