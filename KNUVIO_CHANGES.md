@@ -84,7 +84,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed audio sync fallback before it is merged: when a subtitle cannot be synced from embedded
   subtitles, it is aligned against the speech in the audio track.
 - **What:** [NuvioMedia/NuvioTV#4150](https://github.com/NuvioMedia/NuvioTV/pull/4150) by DavidVamaiotu, complete at head
-  `51aedfe85`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
+  `6308322f4`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
   1.1.0-beta.12 as `1c523005f`, and the beta.12 merge resolves its conflict as the rebased PR does. Plus `d56f38a18`, our
   fix proposed into the PR's branch as
   [DavidVamaiotu/NuvioTV-Reshaped#70](https://github.com/DavidVamaiotu/NuvioTV-Reshaped/pull/70): when the audio sync tests
@@ -92,8 +92,11 @@ can be dropped from knuvio after merging X.
   Traditional Chinese). It only changes `SubtitleCandidatePool.languageKey` and its test. The author then rebased the PR
   onto `dev` `5ad41476a` (contained in 1.2.0-beta.1) with that fix as `c1201940a`, and knuvio matched it exactly at that
   commit. On top, the PR's `ee6aa9008` (second review: fallback off by default, audio sampling Low by default, mpv support
-  through dialogue spots and a retimed SRT copy, much faster word matching, less recognizer memory) and `51aedfe85` (more
-  reliable locks, steadier recognition) were cherry-picked unchanged.
+  through dialogue spots and a retimed SRT copy, much faster word matching, less recognizer memory), `51aedfe85` (more
+  reliable locks, steadier recognition), `465473a26` (interrupted spot sampling resumes for the next subtitle; a sync found
+  through a bridged English reference is confirmed only when corroborated), `9091ccb5e` (no result toasts: a synced
+  subtitle is retimed silently and keeps the "Auto synced" chip) and `6308322f4` (English references download sooner and
+  stay cached for the app, last 8 files; speech is recognised while they download) were cherry-picked unchanged.
   The build downloads the sherpa-onnx AAR from GitHub (pinned version and SHA-256). The speech model, about 74 MB, is
   downloaded only from the button in Settings, from Hugging Face (k2-fsa ONNX files at a pinned commit), every file pinned
   by size and SHA-256; without it a session uses speech detection only.
@@ -104,12 +107,13 @@ can be dropped from knuvio after merging X.
   `settings/LicensesAttributionsScreen.kt`, `settings/PlaybackSubtitleSettings.kt`.
 - **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
   `9d72c7046` (each message ends with "cherry picked from commit …"), the conflict resolution in "Merge upstream
-  1.1.0-beta.12", `a8752a302` (cherry-pick of `d56f38a18`, PR #70), and the cherry-picks of `ee6aa9008` and `51aedfe85`.
-- **Remove:** revert the cherry-picks of `51aedfe85` and `ee6aa9008`, then `a8752a302`, then the four original cherry-picks,
-  newest first. Where a revert conflicts, keep the upstream release's code.
+  1.1.0-beta.12", `a8752a302` (cherry-pick of `d56f38a18`, PR #70), and the cherry-picks of `ee6aa9008`, `51aedfe85`,
+  `465473a26`, `9091ccb5e` and `6308322f4`.
+- **Remove:** revert the cherry-picks of `6308322f4`, `9091ccb5e`, `465473a26`, `51aedfe85` and `ee6aa9008`, then
+  `a8752a302`, then the four original cherry-picks, newest first. Where a revert conflicts, keep the upstream release's code.
 - **Upstream status:** upstream PR #4150 (open). The regional-language fix is in the PR as `c1201940a`; PR #70 itself is
   still open.
-- **Watch:** if the PR gets more commits, cherry-pick the ones after `51aedfe85`. If it is rebased again, compare the PR
+- **Watch:** if the PR gets more commits, cherry-pick the ones after `6308322f4`. If it is rebased again, compare the PR
   head's files with knuvio (`git diff <head> -- $(git diff --name-only <base> <head>)`): only other knuvio changes may
   differ, and nothing in `audiosync/` or `SubtitleCandidatePool*`. When an upstream release contains the PR,
   merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
