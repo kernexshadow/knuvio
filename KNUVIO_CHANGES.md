@@ -124,7 +124,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) by haaihond (branch `full-nntp`),
-  complete at head `c44f37137`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
+  complete at head `6fcd0335e`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
   are under Settings → Integrations → Usenet. The engine binaries for the four ABIs (about 11 MB each) are not in Git: the
   build downloads them from the GitHub release pinned in `native/usenet/prebuilt/manifest.json` (currently on
   haaihond/NuvioTV), checks their SHA-256 and caches them in `native/usenet/prebuilt/` (ignored). No Go is needed, but the
@@ -180,6 +180,11 @@ can be dropped from knuvio after merging X.
     (one request with alternative titles and translations), asked for alongside the indexers: results whose names give
     only years more than one off, or the title of another film, are dropped. Obfuscated names and names without a title
     pass; without the details the results are listed unchecked; when nothing is left, the movie is searched by title.
+  - [#86](https://github.com/haaihond/NuvioTV/pull/86): a movie's Usenet release is its own binge group, so Reuse Binge
+    Group opens the same release again (series keep one group per upload).
+  - [#87](https://github.com/haaihond/NuvioTV/pull/87): when the engine gives up on a stream (410 with
+    `X-Usenet-Failure`), the error screen names the reason (missing or damaged parts, refused login, used-up quota, no
+    real video) instead of "link has expired".
 
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
   (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
@@ -223,7 +228,7 @@ can be dropped from knuvio after merging X.
   `89c510292`, `ee8117851`, `4f133e7b5`, `2db3c481f`, `dcbff8aa9`, `c2c5b3b0f`, `9d70bbe26`, `963e073fd`, `09a55f3d3`,
   `2d8aa575e`, `0fa315835`, `24fde2a74`, `da950d354`, `c3b21ab4c`, `6ffe8fef2`, `2600817af`, `30ba4e35a`, `1c8c83b42`,
   `cd37250b9`, `0b662dda0`, `78eb82f38`, `b6994ac6e`, `a6a88d7ab`, `814986a9f`, `ee21a9816`, `1c4a60c50`, `5e99c8c52`, `d13880a5f`, `05a66ef6e`,
-  `9ff432986` (from #4426; `0b662dda0` and `78eb82f38`
+  `9ff432986`, `2a5b19c37`, `e7b694a84` (from #4426; `0b662dda0` and `78eb82f38`
   rebuilt the engine on parallel branches, so their `manifest.json` conflicts were resolved with each commit's version), "knuvio: drop the committed Usenet engine binaries",
   and the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10" and "Merge upstream
   1.2.0-beta.1".
@@ -231,7 +236,7 @@ can be dropped from knuvio after merging X.
   release's code.
 - **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges c44f37137..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 6fcd0335e..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. A commit that changes the engine changes `prebuilt/manifest.json` too; its pinned release must exist, or the
   build fails. If the binaries move to a NuvioMedia release, only the manifest changes. When an upstream release contains the
