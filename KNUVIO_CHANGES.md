@@ -13,6 +13,8 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
+| `core/player/dvmkv/{DefaultEbmlReader,EbmlProcessor,MatroskaExtractor}.java`, `baseline-prof.txt` | [K-09](#k-09-read-mkv-cues-in-one-go-upstream-pr-4700) |
+| `PlayerRuntimeController{,Initialization}.kt`, `MetaDetailsViewModel.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-prewarm-the-first-playback-upstream-pr-4701) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -83,7 +85,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed audio sync fallback before it is merged: when a subtitle cannot be synced from embedded
   subtitles, it is aligned against the speech in the audio track.
 - **What:** [NuvioMedia/NuvioTV#4150](https://github.com/NuvioMedia/NuvioTV/pull/4150) by DavidVamaiotu, complete at head
-  `c6707a541`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
+  `e9d460251`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
   1.1.0-beta.12 as `1c523005f`, and the beta.12 merge resolves its conflict as the rebased PR does. Plus `d56f38a18`, our
   fix proposed into the PR's branch as
   [DavidVamaiotu/NuvioTV-Reshaped#70](https://github.com/DavidVamaiotu/NuvioTV-Reshaped/pull/70): when the audio sync tests
@@ -97,24 +99,30 @@ can be dropped from knuvio after merging X.
   subtitle is retimed silently and keeps the "Auto synced" chip), `6308322f4` (English references download sooner and
   stay cached for the app, last 8 files; speech is recognised while they download), `127099b56` (an ambiguous
   speech-activity match is confirmed by where subtitle lines start) and `c6707a541` (when no whole-film lock passes, as
-  with a subtitle made for another cut, it locks on the audio around the playhead) were cherry-picked unchanged.
+  with a subtitle made for another cut, it locks on the audio around the playhead) were cherry-picked unchanged,
+  and so were the PR's next twelve commits, `9f4ed6c08` to `e9d460251`: frame-rate choice (the 0.1% stretched rate
+  when overlap and line starts both favour it, the 23.976-based PAL rate unless 25/24 clearly fits better, and waiting
+  for a rate that clearly beats the other families), a speech-activity lock withdrawn when minutes of audio no longer
+  support it, searches skipped for a clearly unmatched subtitle until more audio arrives, results from a forgotten
+  audio track or stream discarded, English references fetched only when the speech model is downloaded, a background
+  priority decoder thread, aligner buffers and FFT sizes reused, shorter setting descriptions and Polish translations.
   The build downloads the sherpa-onnx AAR from GitHub (pinned version and SHA-256). The speech model, about 74 MB, is
   downloaded only from the button in Settings, from Hugging Face (k2-fsa ONNX files at a pinned commit), every file pinned
   by size and SHA-256; without it a session uses speech detection only.
 - **Files:** new `app/src/main/java/com/nuvio/tv/ui/screens/player/audiosync/**`, its tests,
-  `res/raw/silero_vad_v5_16k.bin`, `res/values/audio_sync_strings.xml`, `assets/licenses/audio_sync_NOTICE.md`.
+  `res/raw/silero_vad_v5_16k.bin`, `res/values{,-pl}/audio_sync_strings.xml`, `assets/licenses/audio_sync_NOTICE.md`.
   Upstream files edited: `app/build.gradle.kts`, `app/proguard-rules.pro`, `ui/screens/player/NuvioMpvSurfaceView.kt`,
   `PlayerRuntimeController{AutomaticSubtitleSync,Initialization,Lifecycle,Observers}.kt`,
   `settings/LicensesAttributionsScreen.kt`, `settings/PlaybackSubtitleSettings.kt`.
 - **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
   `9d72c7046` (each message ends with "cherry picked from commit …"), the conflict resolution in "Merge upstream
   1.1.0-beta.12", `a8752a302` (cherry-pick of `d56f38a18`, PR #70), and the cherry-picks of `ee6aa9008`, `51aedfe85`,
-  `465473a26`, `9091ccb5e`, `6308322f4`, `127099b56` and `c6707a541`.
-- **Remove:** revert the cherry-picks of `c6707a541`, `127099b56`, `6308322f4`, `9091ccb5e`, `465473a26`, `51aedfe85`
+  `465473a26`, `9091ccb5e`, `6308322f4`, `127099b56`, `c6707a541`, and of the twelve commits `9f4ed6c08` to `e9d460251`.
+- **Remove:** revert the cherry-picks of `e9d460251` back to `9f4ed6c08`, then `c6707a541`, `127099b56`, `6308322f4`, `9091ccb5e`, `465473a26`, `51aedfe85`
   and `ee6aa9008`, then `a8752a302`, then the four original cherry-picks, newest first. Where a revert conflicts, keep the upstream release's code.
 - **Upstream status:** upstream PR #4150 (open). The regional-language fix is in the PR as `c1201940a`; PR #70 itself is
   still open.
-- **Watch:** if the PR gets more commits, cherry-pick the ones after `c6707a541`. If it is rebased again, compare the PR
+- **Watch:** if the PR gets more commits, cherry-pick the ones after `e9d460251`. If it is rebased again, compare the PR
   head's files with knuvio (`git diff <head> -- $(git diff --name-only <base> <head>)`): only other knuvio changes may
   differ, and nothing in `audiosync/` or `SubtitleCandidatePool*`. When an upstream release contains the PR,
   merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
@@ -284,3 +292,34 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 98e05d4ea..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
+
+## K-09 Read MKV Cues in one go (upstream PR #4700)
+
+- **Why:** a remux's Cues (seek index) holds 200,000 to 500,000 tiny elements, each fetched with several small reads:
+  0.3-1.4 s before playback could start, on a SHIELD and a Strong Leap.
+- **What:** [NuvioMedia/NuvioTV#4700](https://github.com/NuvioMedia/NuvioTV/pull/4700) by kernexshadow (head
+  `a80fe6c5a`), cherry-picked unchanged: the Matroska extractor peeks the whole Cues element (up to 16 MiB) and walks it
+  in memory; Cues it would not handle exactly as the reader does go back to the old element-by-element read.
+- **Files:** upstream files edited: `core/player/dvmkv/{DefaultEbmlReader,EbmlProcessor,MatroskaExtractor}.java`,
+  `app/src/main/baseline-prof.txt`. New tests `core/player/dvmkv/MatroskaWholeCuesTest.kt` and
+  `app/src/test/java/android/util/SparseArray.java`.
+- **Commits:** the cherry-pick of `a80fe6c5a`.
+- **Remove:** revert that commit.
+- **Upstream status:** upstream PR #4700 (open).
+- **Watch:** cherry-pick new commits of the PR (`git rev-list --reverse --no-merges a80fe6c5a..<new head> ^upstream/dev`).
+
+## K-10 Prewarm the first playback (upstream PR #4701)
+
+- **Why:** the first playback after the app starts did one-time work before the first frame (codec and HDR caps for the
+  Dolby Vision decision, native libraries, the playback HTTP client): 250-550 ms on a Strong Leap, 150 ms on a SHIELD.
+- **What:** [NuvioMedia/NuvioTV#4701](https://github.com/NuvioMedia/NuvioTV/pull/4701) by kernexshadow (head
+  `0ae8110fa`): that work runs once per process on a background thread when a details or stream screen opens, and the
+  fixed 120 ms settle delay before building ExoPlayer is skipped when there is no previous player.
+- **Files:** new `ui/screens/player/PlayerStartupPrewarm.kt`. Upstream files edited:
+  `ui/screens/player/PlayerRuntimeController{,Initialization}.kt`, `ui/screens/detail/MetaDetailsViewModel.kt`,
+  `ui/screens/stream/StreamScreenViewModel.kt`.
+- **Commits:** the cherry-pick of `0ae8110fa`. Its conflict in `StreamScreenViewModel.init` with K-07 keeps both: the
+  prewarm call first, as in the PR, then K-07's Usenet blocks.
+- **Remove:** revert that commit.
+- **Upstream status:** upstream PR #4701 (open).
+- **Watch:** cherry-pick new commits of the PR (`git rev-list --reverse --no-merges 0ae8110fa..<new head> ^upstream/dev`).
