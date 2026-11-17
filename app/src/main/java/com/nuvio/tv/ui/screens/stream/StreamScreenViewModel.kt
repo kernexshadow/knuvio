@@ -299,6 +299,7 @@ class StreamScreenViewModel @Inject constructor(
     }
 
     init {
+        com.nuvio.tv.ui.screens.player.PlayerStartupPrewarm.start(context)
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             // Links kept by earlier versions still hold their indexer's API key: take it out.
             runCatching {
