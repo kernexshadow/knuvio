@@ -13,7 +13,6 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
-| Updater files listed in K-09 | [K-09](#k-09-updater-explain-optimized-installs-offer-the-system-installer-upstream-pr-4622) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -206,10 +205,14 @@ can be dropped from knuvio after merging X.
   were left out of the 1.1.0 revisions and are contained in 1.2.0-beta.1. Its merge conflicted only in the imports of
   `NuvioMpvSurfaceView`, resolved as the PR resolves them, so knuvio matches the PR head again, apart from K-02, K-06,
   K-08 and the `dev` code that 1.2.0-beta.1 adds after `01759ead3`. The PR then merged `dev` up to `e0e830b60`
-  (`635bc983c`, `e9e95ec98`), which contains 1.2.0-beta.1, so those beta.1 differences are gone. Both merges are left out:
-  their conflict resolutions in `PlayerRuntimeControllerStreams.kt`, `StreamScreenViewModel.kt` and
-  `AddonManagerViewModel.kt` fit the PR to `dev` code after 1.2.0-beta.1 (#4624's auto-play fallback for the next
-  episode and on the stream screen, #4629, #4633), and come with the next upstream release that contains it.
+  (`635bc983c`, `e9e95ec98`), which contains 1.2.0-beta.1, so those beta.1 differences are gone. Both merges were left
+  out of the 1.2.0-beta.1 revisions, because their conflict resolutions in `PlayerRuntimeControllerStreams.kt`,
+  `StreamScreenViewModel.kt` and `AddonManagerViewModel.kt` fit the PR to `dev` code after 1.2.0-beta.1 (#4624's
+  auto-play fallback for the next episode and on the stream screen, #4629, #4633). 1.2.0-beta.2 contains `e0e830b60`
+  and does not change those three files after it, so its merge takes the PR head's version of all three; in
+  `PlayerRuntimeControllerStreams.kt` it puts back K-08's two changes (the Blu-ray state reset in
+  `applySelectedStreamState` and `bluray = currentStreamBluray` in `switchToSourceStream`). knuvio matches the PR head
+  merged with 1.2.0-beta.2 again, apart from K-02, K-06 and K-08.
 - **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
@@ -235,8 +238,8 @@ can be dropped from knuvio after merging X.
   `cd37250b9`, `0b662dda0`, `78eb82f38`, `b6994ac6e`, `a6a88d7ab`, `814986a9f`, `ee21a9816`, `1c4a60c50`, `5e99c8c52`, `d13880a5f`, `05a66ef6e`,
   `9ff432986`, `2a5b19c37`, `e7b694a84`, `433cb5a1b` (from #4426; `0b662dda0` and `78eb82f38`
   rebuilt the engine on parallel branches, so their `manifest.json` conflicts were resolved with each commit's version), "knuvio: drop the committed Usenet engine binaries",
-  and the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10" and "Merge upstream
-  1.2.0-beta.1".
+  and the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
+  1.2.0-beta.1" and "Merge upstream 1.2.0-beta.2".
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
 - **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
@@ -253,8 +256,8 @@ can be dropped from knuvio after merging X.
   (`PlayerRuntimeControllerSourceFallback.kt`, from NuvioMedia/NuvioTV#4581, `c3a27b5e2`), next to this PR's
   `StreamFallbackSession`. Both are off by default. With both on, in ExoPlayer's error handling a permanent Usenet
   failure goes to the PR's fallback first and any other error before the first frame to upstream's; the PR, now past
-  `c3a27b5e2`, does the same. Its other reconciliation (upstream's auto-play fallback leaves Usenet sources to the PR's
-  own) is in the left-out `dev` merges above, because the code it changes arrives after 1.2.0-beta.1 (#4624).
+  `c3a27b5e2`, does the same. Since 1.2.0-beta.2, which brings #4624, upstream's auto-play fallback also leaves Usenet
+  sources to the PR's own, as in the PR's `dev` merges above.
 
 ## K-08 Blu-ray clips and discs in ExoPlayer (upstream PR #696)
 
@@ -281,24 +284,3 @@ can be dropped from knuvio after merging X.
 - **Watch:** same as K-07: cherry-pick new non-merge commits of the PR that are not in upstream `dev`
   (`git rev-list --reverse --no-merges 98e05d4ea..<new head> ^upstream/dev`). Check with
   `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.*'`.
-
-## K-09 Updater: explain optimized installs, offer the system installer (upstream PR #4622)
-
-- **Why:** an update installed from the banner with its baseline profile closes the app for 30–55 s and leaves the TV on the
-  home screen, which looks like a crash. Bring the fix in before an upstream release contains it.
-- **What:** [NuvioMedia/NuvioTV#4622](https://github.com/NuvioMedia/NuvioTV/pull/4622) by kernexshadow (head `59313c18f`),
-  its two commits cherry-picked unchanged. The banner says the app closes while the update installs (on Android 9 it also
-  reopens by itself, through a `MY_PACKAGE_REPLACED` receiver that launches `context.packageName`, so it works with the
-  knuvio app IDs). A new About setting, "Optimize updates during install" (on by default), sends installs the user starts
-  through Android's installer screen when turned off; Android 7 and 8 always use that screen. Cancelling the install
-  confirmation no longer brings up two more prompts. The other `dev` commits on the PR's branch are left to the next
-  upstream release.
-- **Files (upstream):** `app/src/full/AndroidManifest.xml`, `app/src/full/java/com/nuvio/tv/updater/{ApkInstaller,
-  UpdateInstallResultReceiver,UpdatePreferences,UpdateViewModel}.kt`, `updater/ui/UpdateBanner.kt`, new
-  `updater/UpdateRelaunchReceiver.kt`, `app/src/playstore/java/com/nuvio/tv/updater/UpdateViewModel.kt`,
-  `ui/screens/settings/UpdateChannelSettings.kt`, `res/values/strings.xml`.
-- **Commits:** cherry-picks of `64cfb8138` and `59313c18f`.
-- **Remove:** revert the two cherry-picks, newest first.
-- **Upstream status:** merged into upstream `dev` as `a3532b819` on 2026-11-13, in no release yet. Once an upstream release
-  contains it, its merge brings the same changes (take upstream's version if anything conflicts) and this entry can be
-  deleted.
