@@ -1,28 +1,23 @@
 package com.nuvio.tv.ui.screens.player
 
-import androidx.media3.extractor.ExtractorsFactory
 import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncSettings
 import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncTaps
-import com.nuvio.tv.ui.screens.player.autosync.AutoSyncExtractorsFactory
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences
 
 /**
  * Blu-ray clips (BDAV) are read by their own extractors, not by the factory that
- * [autoSyncExtractorsFactory] wraps. Wrap them the same way, so AutoSync sees the disc's subtitle
- * timing and the audio fallback hears its audio.
+ * [autoSyncExtractorsFactory] wraps. Give them the audio taps, so the audio fallback hears the
+ * disc's audio. AutoSync's embedded subtitle observer is left out: a clip has no subtitle index,
+ * so the lines playback reads ahead never make the near-complete reference it needs, and decoding
+ * every PGS image on the loading thread would only cost time.
  */
 internal fun PlayerRuntimeController.configureBdavAutoSync() {
     mediaSourceFactory.configureBdavExtractorsWrapper { delegate, url ->
         AutoSyncPreferences.ensureLoaded(context)
-        if (!AutoSyncPreferences.isEnabled(context)) {
-            delegate
+        if (AutoSyncPreferences.isEnabled(context) && AudioSyncSettings.fallbackEnabled.value) {
+            AudioSyncTaps.wrapExtractors(delegate, url)
         } else {
-            val audioDelegate = if (AudioSyncSettings.fallbackEnabled.value) {
-                AudioSyncTaps.wrapExtractors(delegate, url)
-            } else {
-                delegate
-            }
-            AutoSyncExtractorsFactory(delegate = audioDelegate, sourceKey = url)
+            delegate
         }
     }
 }

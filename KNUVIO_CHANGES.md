@@ -328,15 +328,16 @@ can be dropped from knuvio after merging X.
 ## K-11 AutoSync on Blu-ray clips
 
 - **Why:** K-08 plays Blu-ray clips (`.m2ts`, also from a full disc served by K-07) through its own extractors, which
-  skipped the hook K-06 puts on the player's extractors. On a disc, AutoSync never saw the embedded subtitles and the audio
-  fallback never heard the audio, so a subtitle was never synced (seen with a full UHD disc release from Usenet, while
+  skipped the hook K-06 puts on the player's extractors. On a disc the audio fallback never heard the audio, and the
+  embedded subtitles give AutoSync no usable reference, so a subtitle was never synced (seen with a full UHD disc release from Usenet, while
   remuxes of the same film synced).
-- **What:** `PlayerMediaSourceFactory` takes a wrapper for the Blu-ray extractors, and the player sets it to the same
-  wrapping as `autoSyncExtractorsFactory`: AutoSync's embedded subtitle observer, plus the audio taps when the audio
-  fallback is on. A playlist of several clips is left unwrapped, because each clip's timestamps start again at zero.
-  On a disc the audio fallback now syncs the subtitle (about 20 s on a SHIELD with a UHD disc and its TrueHD track). The
-  embedded subtitles seen while playing are not enough on their own: AutoSync's live reference needs most of the film's
-  subtitles, which only an index gives (Matroska Cues), and a `.m2ts` has none.
+- **What:** `PlayerMediaSourceFactory` takes a wrapper for the Blu-ray extractors, and the player sets it to the audio
+  fallback's taps when AutoSync and the audio fallback are on. A playlist of several clips is left unwrapped, because
+  each clip's timestamps start again at zero. On a disc the audio fallback now syncs the subtitle (about 20 s on a
+  SHIELD with a UHD disc and its TrueHD track). AutoSync's embedded subtitle observer is not added: its live reference
+  needs most of the film's subtitles, which only an index gives (Matroska Cues), and a `.m2ts` has none. The player
+  reads only 12-15 s ahead, so even a sparse reference (8 lines over 30 s) would come later than the audio, and the
+  observer would decode every PGS image on the loading thread.
 - **Files:** new `ui/screens/player/PlayerRuntimeControllerBdavAutoSync.kt`. Upstream files edited:
   `ui/screens/player/PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line after the
   AutoSync hook).

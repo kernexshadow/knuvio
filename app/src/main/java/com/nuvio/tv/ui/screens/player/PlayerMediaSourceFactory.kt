@@ -71,8 +71,8 @@ import javax.net.ssl.X509TrustManager
 internal class PlayerMediaSourceFactory(private val context: Context) {
     private var customExtractorsFactory: ExtractorsFactory? = null
     private var customSubtitleParserFactory: SubtitleParser.Factory? = null
-    // Blu-ray clips use their own extractors instead of customExtractorsFactory; this wraps them
-    // the way the player wraps its own, given the stream url.
+    // Blu-ray clips use their own extractors instead of customExtractorsFactory; this lets the
+    // player wrap them too, given the stream url.
     @Volatile private var bdavExtractorsWrapper: ((ExtractorsFactory, String) -> ExtractorsFactory)? = null
     private val loadErrorHandlingPolicy = PlayerLoadErrorHandlingPolicy()
 
