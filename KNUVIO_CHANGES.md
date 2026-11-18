@@ -8,10 +8,10 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 
 | Upstream file | Changed by |
 |---|---|
-| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
+| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
-| `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4426) |
+| `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 | `core/player/dvmkv/{DefaultEbmlReader,EbmlProcessor,MatroskaExtractor}.java`, `baseline-prof.txt` | [K-09](#k-09-read-mkv-cues-in-one-go-upstream-pr-4700) |
 | `PlayerRuntimeController{,Initialization}.kt`, `MetaDetailsViewModel.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-prewarm-the-first-playback-upstream-pr-4701) |
@@ -129,17 +129,21 @@ can be dropped from knuvio after merging X.
   merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
   Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
 
-## K-07 Built-in Usenet streaming (upstream PR #4426)
+## K-07 Built-in Usenet streaming (upstream PR #4679)
 
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
-- **What:** [NuvioMedia/NuvioTV#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426) by haaihond (branch `full-nntp`),
-  complete at head `671f1b1d7`. A Go engine (`libnuvio_usenet.so`) runs in-process and streams over loopback; its settings
-  are under Settings → Integrations → Usenet. The engine binaries for the four ABIs (about 11 MB each) are not in Git: the
-  build downloads them from the GitHub release pinned in `native/usenet/prebuilt/manifest.json` (currently on
-  haaihond/NuvioTV), checks their SHA-256 and caches them in `native/usenet/prebuilt/` (ignored). No Go is needed, but the
-  first build needs network access; `-PbuildUsenetFromSource=true` builds them from the vendored source instead (Go, NDK,
-  CMake). The head includes follow-ups by kernexshadow, merged into the PR branch through haaihond/NuvioTV pull requests:
+- **What:** [NuvioMedia/NuvioTV#4679](https://github.com/NuvioMedia/NuvioTV/pull/4679) by haaihond (branch `usenet` on
+  haaihond/NuvioTV), complete at head `5b2099d79`. It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
+  (branch `full-nntp`) with the same app code and the engine in its own repository. A Go engine (`libnuvio_usenet.so`) runs
+  in-process and streams over loopback; its settings are under Settings → Integrations → Usenet. The engine lives in
+  [NuvioMedia/nuvio-usenet-engine](https://github.com/NuvioMedia/nuvio-usenet-engine) (revision pinned in
+  `native/usenet/engine-source.json`); its binaries for the four ABIs (about 11 MB each) are not in Git: the build
+  downloads them from the release pinned in `native/usenet/prebuilt/manifest.json`, checks their SHA-256 and caches them
+  in `native/usenet/prebuilt/` (ignored). No Go is needed, but the first build needs network access;
+  `-PbuildUsenetFromSource=true -PusenetEngineSourceDir=<engine checkout>` builds them from source instead (Go, NDK,
+  CMake). The app code includes follow-ups by kernexshadow, merged into `full-nntp` through haaihond/NuvioTV pull requests
+  before the move:
   - [#58](https://github.com/haaihond/NuvioTV/pull/58): once a provider and an indexer are set up, the addon list gets a
     "Built-in Usenet" row (toggle and move buttons, no Remove). Its place orders the results on the stream screen and in the
     player (next-episode auto-play, stream fallback), so *Auto-play first source* can reach Usenet before the addons below it.
@@ -199,6 +203,14 @@ can be dropped from knuvio after merging X.
     each indexer search reads: Auto (default, as before: 200, or the maximum results when higher), 100, 200, 500 or 1000.
     100 keeps every search to one page, so an episode costs at most two API hits per indexer.
 
+  On #4679: haaihond's per-indexer fetch limits when paging Newznab searches (TV and phone settings, with an explanation
+  of Hydra pagination and the display limit), and kernexshadow's
+  [#90](https://github.com/haaihond/NuvioTV/pull/90) (the auto-play cover stays while a Usenet stream hands off to the
+  player) and [#92](https://github.com/haaihond/NuvioTV/pull/92) (a connection tuner for Usenet providers), followed by
+  haaihond's tuner changes: provider refusals are confirmed before the connection allowance is lowered, a gain over the
+  saved allowance must repeat, NNTP ports are compared at equal connection counts, and outstanding connections close
+  before another run. The same #90 and #92 changes went into `full-nntp` as #89 and #91.
+
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
   (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
 
@@ -221,12 +233,16 @@ can be dropped from knuvio after merging X.
   and does not change those three files after it, so its merge takes the PR head's version of all three; in
   `PlayerRuntimeControllerStreams.kt` it puts back K-08's two changes (the Blu-ray state reset in
   `applySelectedStreamState` and `bluray = currentStreamBluray` in `switchToSourceStream`). knuvio matches the PR head
-  merged with 1.2.0-beta.2 again, apart from K-02, K-06 and K-08.
-- **Files:** new `native/usenet/**`, `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
+  merged with 1.2.0-beta.2 again, apart from K-02, K-06 and K-08. On 2026-11-16 haaihond closed #4426 in favour of
+  #4679: four new commits on `dev` `2c853c178` (1.2.0-beta.2) that carry the app code of `full-nntp` `671f1b1d7` and take
+  the engine as a pinned dependency (`3063a97f8` there). Its app files matched knuvio apart from K-02, K-06 and K-08, so
+  "knuvio: take the Usenet engine as #4679's pinned dependency" only matched it outside the app code (the vendored engine
+  source and its two workflows deleted, the pinned release, licenses, prebuilt scripts and their test taken), and the
+  #4679 commits after `3063a97f8` were cherry-picked.
+- **Files:** new `native/usenet/**` (pinned engine release, licenses, build and prebuilt scripts), `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
-  `BUILT_IN_USENET.md`, `STREAM_FALLBACK.md`, `docs/USENET_SORTING.md`, `tests/usenet_prebuilts_test.py`,
-  `.github/workflows/usenet-tests.yml`, `.github/workflows/usenet-native-assets.yml`. Upstream files
+  `BUILT_IN_USENET.md`, `STREAM_FALLBACK.md`, `docs/USENET_SORTING.md`, `tests/usenet_prebuilts_test.py`. Upstream files
   edited: `app/build.gradle.kts`, `gradle/libs.versions.toml`, `NuvioApplication.kt`, `core/player/{FrameRateUtils,
   StreamAutoPlaySelector,SubtitleFileCache}.kt`, `core/streams/PlaybackAvailability.kt`,
   `data/local/StreamLinkCacheDataStore.kt`, `data/mapper/StreamMapper.kt`, `data/remote/api/TmdbApi.kt`,
@@ -236,7 +252,7 @@ can be dropped from knuvio after merging X.
   `ui/screens/player/{MpvStartupWatchdogPolicy,NuvioMpvSurfaceView,PlayerMediaSourceFactory,PlayerViewModel}.kt`, the
   `PlayerRuntimeController*.kt` files (base, ErrorRecovery, Initialization, Lifecycle, Mpv, MpvEvents, Observers,
   PlaybackEvents, Scrobble, Server, Startup, Streams, TrackSelection), `ui/screens/settings/{AdvancedSettingsViewModel,
-  DiagnosticsCard,NetworkSettingsScreen,PlaybackSettingsViewModel,SettingsScreen}.kt`, `ui/screens/stream/{StreamScreen,StreamScreenViewModel}.kt`,
+  DiagnosticsCard,NetworkSettingsScreen,PlaybackSettingsViewModel,SettingsDesignSystem,SettingsScreen}.kt`, `ui/screens/stream/{StreamScreen,StreamScreenViewModel}.kt`,
   `res/values/strings.xml`, four existing unit tests and two upstream workflows (disabled in knuvio).
 - **Commits:** "knuvio: import upstream PR #3511 (built-in Usenet streaming)", "knuvio: import haaihond/NuvioTV PR #58
   (built-in Usenet among the addons)", the cherry-picks of `e9c3d3d08`, `666cc76e6`, `0456c4ebe`, `5f274e426`,
@@ -247,20 +263,24 @@ can be dropped from knuvio after merging X.
   `cd37250b9`, `0b662dda0`, `78eb82f38`, `b6994ac6e`, `a6a88d7ab`, `814986a9f`, `ee21a9816`, `1c4a60c50`, `5e99c8c52`, `d13880a5f`, `05a66ef6e`,
   `9ff432986`, `2a5b19c37`, `e7b694a84`, `433cb5a1b` (from #4426; `0b662dda0` and `78eb82f38`
   rebuilt the engine on parallel branches, so their `manifest.json` conflicts were resolved with each commit's version), "knuvio: drop the committed Usenet engine binaries",
-  and the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
-  1.2.0-beta.1" and "Merge upstream 1.2.0-beta.2".
+  the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
+  1.2.0-beta.1" and "Merge upstream 1.2.0-beta.2", "knuvio: take the Usenet engine as #4679's pinned dependency", and the
+  cherry-picks of `e0255815e`, `a97133b69`, `05cd2182b`, `bd113d27a`, `e9009ae50`, `f19852eed`, `5d9ad4e73`, `f9731ceb0`,
+  `5c1ff0d52`, `5b2099d79` (from #4679).
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
-- **Upstream status:** upstream PR #4426 (open), which replaces #3511 (closed without merging on 2026-11-01).
+- **Upstream status:** upstream PR #4679 (open), which replaces #4426 (closed without merging on 2026-11-16), which
+  replaced #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 671f1b1d7..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 5b2099d79..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
-  contains them. A commit that changes the engine changes `prebuilt/manifest.json` too; its pinned release must exist, or the
-  build fails. If the binaries move to a NuvioMedia release, only the manifest changes. When an upstream release contains the
+  contains them. An engine update changes `engine-source.json` and `prebuilt/manifest.json`; its pinned release must exist,
+  or the build fails. `full-nntp` may still get commits, but #4679 is the one to follow. When an upstream release contains the
   PR, merging it conflicts in the files above: take upstream's version and delete this entry. If the PR is closed without
   merging, revert. Check with `python native/usenet/scripts/fetch_prebuilts.py`,
   `python native/usenet/scripts/check_prebuilts.py` and
-  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*'`.
+  `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.core.usenet.*' --tests '*Usenet*' --tests '*Newznab*'
+  --tests '*NntpProvider*'`.
 - **Watch, two source fallbacks:** 1.2.0-beta.1 adds upstream's own fallback to the next matching source
   (`PlayerRuntimeControllerSourceFallback.kt`, from NuvioMedia/NuvioTV#4581, `c3a27b5e2`), next to this PR's
   `StreamFallbackSession`. Both are off by default. With both on, in ExoPlayer's error handling a permanent Usenet
