@@ -15,6 +15,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 | `core/player/dvmkv/{DefaultEbmlReader,EbmlProcessor,MatroskaExtractor}.java`, `baseline-prof.txt` | [K-09](#k-09-read-mkv-cues-in-one-go-upstream-pr-4700) |
 | `PlayerRuntimeController{,Initialization}.kt`, `MetaDetailsViewModel.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-prewarm-the-first-playback-upstream-pr-4701) |
+| `PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line) | [K-11](#k-11-autosync-on-blu-ray-clips) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -323,3 +324,27 @@ can be dropped from knuvio after merging X.
 - **Remove:** revert that commit.
 - **Upstream status:** upstream PR #4701 (open).
 - **Watch:** cherry-pick new commits of the PR (`git rev-list --reverse --no-merges 0ae8110fa..<new head> ^upstream/dev`).
+
+## K-11 AutoSync on Blu-ray clips
+
+- **Why:** K-08 plays Blu-ray clips (`.m2ts`, also from a full disc served by K-07) through its own extractors, which
+  skipped the hook K-06 puts on the player's extractors. On a disc the audio fallback never heard the audio, and the
+  embedded subtitles give AutoSync no usable reference, so a subtitle was never synced (seen with a full UHD disc release from Usenet, while
+  remuxes of the same film synced).
+- **What:** `PlayerMediaSourceFactory` takes a wrapper for the Blu-ray extractors, and the player sets it to the audio
+  fallback's taps when AutoSync and the audio fallback are on. A playlist of several clips is left unwrapped, because
+  each clip's timestamps start again at zero. On a disc the audio fallback now syncs the subtitle (about 20 s on a
+  SHIELD with a UHD disc and its TrueHD track). AutoSync's embedded subtitle observer is not added: its live reference
+  needs most of the film's subtitles, which only an index gives (Matroska Cues), and a `.m2ts` has none. The player
+  reads only 12-15 s ahead, so even a sparse reference (8 lines over 30 s) would come later than the audio, and the
+  observer would decode every PGS image on the loading thread.
+  AutoSync also stops waiting 12 s for embedded lines on a Blu-ray clip, which never come: the audio fallback starts as
+  soon as the subtitle is loaded. On the SHIELD the first lock came after 8.7 s instead of 21 s.
+- **Files:** new `ui/screens/player/PlayerRuntimeControllerBdavAutoSync.kt`. Upstream files edited:
+  `ui/screens/player/PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line after the
+  AutoSync hook). K-06 file edited: `autosync/AutomaticSubtitleSync.kt` (the live reference wait, and an import).
+- **Remove:** revert its commits. Remove it together with K-06 or K-08.
+- **Watch:** when the PR behind K-06 changes the live reference wait in `AutomaticSubtitleSync.kt`, keep the
+  `BdavAutoSyncSources` case.
+- **Upstream status:** knuvio only, while K-06 and K-08 are separate open PRs. If both are merged upstream, propose it
+  there.
