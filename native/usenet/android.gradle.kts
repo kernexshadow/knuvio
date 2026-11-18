@@ -7,6 +7,7 @@ import java.nio.file.StandardCopyOption
 // A PIE executable is named lib*.so solely so PackageManager installs it in the
 // executable nativeLibraryDir. It is launched, never loaded through JNI.
 val nativeRoot = rootProject.file("native/usenet")
+val engineSourceRoot = providers.gradleProperty("usenetEngineSourceDir").orNull?.let { rootProject.file(it) }
 val sdk = File(extra["usenetSdkDirectory"] as String)
 val ndkVersion = extra["usenetNdkVersion"] as String
 val ndk = File(sdk, "ndk/$ndkVersion")
@@ -44,7 +45,7 @@ val buildTasks = abis.map { (abi, target) ->
         val prebuilt = File(nativeRoot, "prebuilt/$abi/libnuvio_usenet.so")
 
         if (buildFromSource) {
-            inputs.files(fileTree(nativeRoot) {
+            inputs.files(fileTree(requireNotNull(engineSourceRoot) { "Source builds require -PusenetEngineSourceDir=/path/to/nuvio-usenet-engine" }) {
                 include("**/*.go", "**/*.mod", "**/*.sum", "**/*.cc", "**/*.h", "**/CMakeLists.txt")
                 exclude("build/**", "**/*_test.go", "prebuilt/**")
             })
@@ -93,16 +94,16 @@ val buildTasks = abis.map { (abi, target) ->
             check(cmake.exists()) { "Install Android SDK CMake 3.22.1 to build Usenet" }
             check(ndk.exists()) { "Install Android NDK $ndkVersion to build Usenet" }
             project.exec {
-                commandLine(cmake, "-S", File(nativeRoot, "third_party/rapidyenc-native"), "-B", nativeBuild.get().asFile,
+                commandLine(cmake, "-S", File(requireNotNull(engineSourceRoot), "third_party/rapidyenc-native"), "-B", nativeBuild.get().asFile,
                     "-G", "Ninja", "-DCMAKE_MAKE_PROGRAM=${File(cmakeBin, "ninja$suffix")}",
                     "-DCMAKE_TOOLCHAIN_FILE=${File(ndk, "build/cmake/android.toolchain.cmake")}",
                     "-DANDROID_ABI=$abi", "-DANDROID_PLATFORM=android-24", "-DANDROID_STL=c++_static",
                     "-DCMAKE_BUILD_TYPE=Release", "-DDISABLE_SHARED=ON", "-DDISABLE_TOOL=ON", "-DDISABLE_CRC=ON")
             }
             project.exec { commandLine(cmake, "--build", nativeBuild.get().asFile, "--target", "rapidyenc_static", "-j", "4") }
-            File(nativeBuild.get().asFile, "rapidyenc_static/librapidyenc.a").copyTo(File(nativeRoot, "third_party/rapidyenc/librapidyenc_android_${target.first}.a"), overwrite = true)
+            File(nativeBuild.get().asFile, "rapidyenc_static/librapidyenc.a").copyTo(File(requireNotNull(engineSourceRoot), "third_party/rapidyenc/librapidyenc_android_${target.first}.a"), overwrite = true)
             project.exec {
-                workingDir(nativeRoot)
+                workingDir(requireNotNull(engineSourceRoot))
                 environment("GOOS", "android"); environment("GOARCH", target.first); environment("CGO_ENABLED", "1")
                 if (target.first == "arm") environment("GOARM", "7")
                 environment("CC", "\"${File(toolchain, "${target.second}24-clang${if (windows) ".cmd" else ""}").absolutePath}\"")
@@ -110,9 +111,7 @@ val buildTasks = abis.map { (abi, target) ->
                 commandLine(goBinary.get(), "build", "-trimpath", "-buildvcs=false", "-buildmode=pie",
                     "-ldflags=-s -w -extldflags=-Wl,-z,max-page-size=16384", "-o", output.get().asFile, "./cmd/nuvio-usenet")
             }
-            if (prebuilt.parentFile.exists() || prebuilt.parentFile.mkdirs()) {
-                output.get().asFile.copyTo(prebuilt, overwrite = true)
-            }
+
         }
     }
 }

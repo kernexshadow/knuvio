@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "native/usenet/scripts"))
-from check_prebuilts import ABIS, source_digest
+from check_prebuilts import ABIS
 from fetch_prebuilts import fetch
 
 
@@ -21,7 +21,7 @@ class PrebuiltDownloadTest(unittest.TestCase):
         self.payload = b"verified native binary"
         self.manifest = {
             "version": 1,
-            "sourceSha256": source_digest(self.root),
+            "sourceSha256": "a" * 64,
             "binarySha256": {abi: hashlib.sha256(self.payload).hexdigest() for abi in ABIS},
             "downloadBaseUrl": "https://github.com/example/engine/releases/download/usenet-native-1234",
         }
@@ -63,12 +63,6 @@ class PrebuiltDownloadTest(unittest.TestCase):
             fetch(self.root, lambda *a, **kw: BrokenResponse())
         self.assertEqual(list((self.root / "prebuilt").rglob("*.so")), [])
         self.assertEqual(list((self.root / "prebuilt").rglob("*.part")), [])
-
-    def test_rejects_stale_source_before_downloading(self):
-        (self.root / "engine.go").write_text("package changed\n")
-        with self.assertRaisesRegex(ValueError, "different source"):
-            fetch(self.root, self.opener)
-        self.assertEqual(self.requests, [])
 
     def test_rejects_unpinned_or_insecure_url(self):
         for url in ("http://github.com/example/engine/releases/download/v1", "https://github.com/example/engine/releases/latest/download"):
