@@ -65,6 +65,8 @@ internal fun UpdateChannelSettings(
         )
     }
 
+    KnuvioArtCompilationRow()
+
     if (state.autoInstallSupported) {
         SettingsToggleRow(
             title = stringResource(R.string.about_update_auto_install_title),

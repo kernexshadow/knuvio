@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- knuvio K-12: diagnostic row, English only. -->
+<resources>
+    <string name="knuvio_art_compilation_title" translatable="false">App compilation (ART)</string>
+    <string name="knuvio_art_compilation_embedded_profile" translatable="false">Compiled at install with the profile embedded in the APK</string>
+    <string name="knuvio_art_compilation_dex_metadata" translatable="false">Compiled at install with the profile from the update\'s dex metadata</string>
+    <string name="knuvio_art_compilation_later_profile" translatable="false">Compiled with a profile after the install</string>
+    <string name="knuvio_art_compilation_no_profile" translatable="false">Not compiled with a profile, only verified</string>
+    <string name="knuvio_art_compilation_other" translatable="false">Compiled without a profile</string>
+    <string name="knuvio_art_compilation_no_odex" translatable="false">No compiled code found</string>
+    <string name="knuvio_art_compilation_details" translatable="false">Reason: %1$s · ART module %2$s · %3$s</string>
+</resources>

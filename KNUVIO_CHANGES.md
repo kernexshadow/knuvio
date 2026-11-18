@@ -8,7 +8,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 
 | Upstream file | Changed by |
 |---|---|
-| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679) |
+| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679), [K-12](#k-12-embedded-art-profile-and-compilation-status) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
 | `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679) |
@@ -16,6 +16,7 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 | `core/player/dvmkv/{DefaultEbmlReader,EbmlProcessor,MatroskaExtractor}.java`, `baseline-prof.txt` | [K-09](#k-09-read-mkv-cues-in-one-go-upstream-pr-4700) |
 | `PlayerRuntimeController{,Initialization}.kt`, `MetaDetailsViewModel.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-prewarm-the-first-playback-upstream-pr-4701) |
 | `PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line) | [K-11](#k-11-autosync-on-blu-ray-clips) |
+| `ui/screens/settings/UpdateChannelSettings.kt` (one line) | [K-12](#k-12-embedded-art-profile-and-compilation-status) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
 can be dropped from knuvio after merging X.
@@ -368,3 +369,23 @@ can be dropped from knuvio after merging X.
   `BdavAutoSyncSources` case.
 - **Upstream status:** knuvio only, while K-06 and K-08 are separate open PRs. If both are merged upstream, propose it
   there.
+
+## K-12 Embedded ART profile and compilation status
+
+- **Why:** an update the user installs through Android's installer screen keeps that screen up and offers "Open"
+  afterwards, but it carries no dex metadata, so ART only verifies the app at install time and the first launches are
+  slow until background dexopt. ART Service (Android 14+, recent ART module) also reads a profile embedded in the APK at
+  `assets/art-profile/baseline.prof` when there is no .dm. On a Google TV emulator (API 36), installing through the
+  installer screen gave `speed-profile` with the embedded profile and `verify` without it. This tests the same on real
+  Android 14 devices.
+- **What:** the task that embeds the updater's per-API .dm files also copies the newest-format profile
+  (`primary.prof`/`primary.profm` of the open-ended .dm entry) to `assets/art-profile/baseline.prof`/`.profm`, about
+  44 KB. Settings → About gets an "App compilation (ART)" row below "Optimize updates during install": compiler filter,
+  compilation reason (`install` with `speed-profile` = embedded profile used, `install-dm` = the updater's .dm,
+  `verify` = no profile), ART module version and instruction set, read from the first 64 KB of the app's odex.
+  Selecting the row reads it again.
+- **Files:** new `ui/screens/settings/KnuvioArtCompilationRow.kt`, `res/values/strings_knuvio_art.xml`. Upstream files
+  edited: `app/build.gradle.kts` (`EmbedUpdateDexMetadataTask`), `ui/screens/settings/UpdateChannelSettings.kt` (one line).
+- **Remove:** revert its commit.
+- **Upstream status:** knuvio only, for now. If Android 14 devices confirm it, the embedded profile (and using the
+  installer screen for manual updates on Android 14+) could be proposed upstream.

@@ -13,6 +13,7 @@ import com.android.build.gradle.internal.tasks.CompileArtProfileTask
 import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
 import java.io.File
 import java.util.Properties
+import java.util.zip.ZipFile
 import java.net.URI
 import java.security.MessageDigest
 import java.nio.file.Files
@@ -43,6 +44,24 @@ abstract class EmbedUpdateDexMetadataTask : DefaultTask() {
             "$api=$fileName"
         }
         target.resolve("index.properties").writeText(indexLines.joinToString("\n", postfix = "\n"))
+        embedArtProfile(source, apiToFile)
+    }
+
+    // knuvio K-12: ART Service (Android 14+) compiles an APK installed without a .dm, as through Android's installer
+    // screen, with the profile embedded at assets/art-profile/. It needs the newest profile format, the open-ended entry.
+    private fun embedArtProfile(source: File, apiToFile: Properties) {
+        val target = outputDirectory.get().asFile.resolve("art-profile")
+        target.deleteRecursively()
+        val relativePath = apiToFile.getProperty(Int.MAX_VALUE.toString()) ?: return
+        ZipFile(source.resolve(relativePath)).use { dm ->
+            target.mkdirs()
+            for ((entryName, fileName) in listOf("primary.prof" to "baseline.prof", "primary.profm" to "baseline.profm")) {
+                val entry = dm.getEntry(entryName) ?: continue
+                dm.getInputStream(entry).use { input ->
+                    target.resolve(fileName).outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+        }
     }
 }
 
