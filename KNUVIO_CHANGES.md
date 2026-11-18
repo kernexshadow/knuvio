@@ -338,9 +338,13 @@ can be dropped from knuvio after merging X.
   needs most of the film's subtitles, which only an index gives (Matroska Cues), and a `.m2ts` has none. The player
   reads only 12-15 s ahead, so even a sparse reference (8 lines over 30 s) would come later than the audio, and the
   observer would decode every PGS image on the loading thread.
+  AutoSync also stops waiting 12 s for embedded lines on a Blu-ray clip, which never come: the audio fallback starts as
+  soon as the subtitle is loaded. On the SHIELD the first lock came after 8.7 s instead of 21 s.
 - **Files:** new `ui/screens/player/PlayerRuntimeControllerBdavAutoSync.kt`. Upstream files edited:
   `ui/screens/player/PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line after the
-  AutoSync hook).
-- **Remove:** revert the commit. Remove it together with K-06 or K-08.
+  AutoSync hook). K-06 file edited: `autosync/AutomaticSubtitleSync.kt` (the live reference wait, and an import).
+- **Remove:** revert its commits. Remove it together with K-06 or K-08.
+- **Watch:** when the PR behind K-06 changes the live reference wait in `AutomaticSubtitleSync.kt`, keep the
+  `BdavAutoSyncSources` case.
 - **Upstream status:** knuvio only, while K-06 and K-08 are separate open PRs. If both are merged upstream, propose it
   there.
