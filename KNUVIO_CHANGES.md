@@ -135,7 +135,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4679](https://github.com/NuvioMedia/NuvioTV/pull/4679) by haaihond (branch `usenet` on
-  haaihond/NuvioTV), complete at head `ac4d98fa6`. It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
+  haaihond/NuvioTV), complete at head `41285ea58`. It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
   (branch `full-nntp`) with the same app code and the engine in its own repository. A Go engine (`libnuvio_usenet.so`) runs
   in-process and streams over loopback; its settings are under Settings → Integrations → Usenet. The engine lives in
   [NuvioMedia/nuvio-usenet-engine](https://github.com/NuvioMedia/nuvio-usenet-engine) (revision pinned in
@@ -214,7 +214,11 @@ can be dropped from knuvio after merging X.
   [#93](https://github.com/haaihond/NuvioTV/pull/93): the tuner waits for provider slots freed late (retries after 5, 10
   and 20 s, at most a minute per run), still reports the limit after a later failure, treats sign-in replies that report a
   connection ceiling as refusals (Test provider too), and says "Nothing to apply:" when the result matches the settings.
-  kernexshadow reverted #93 on the PR branch (`ac4d98fa6`), and knuvio follows: the tuner is as before #93.
+  kernexshadow reverted #93 on the PR branch (`ac4d98fa6`), and knuvio follows: the tuner is as before #93. Then
+  [#94](https://github.com/haaihond/NuvioTV/pull/94): at the end of each step the tuner signs its connections out with
+  QUIT and reads the replies still due (3 to 15 s), because some servers keep counting a connection closed without QUIT
+  for minutes and then refuse a rerun; and the summary starts with "Nothing to apply:" when the result matches the
+  saved settings.
 
   Engine ahead of the PR: knuvio pins `nuvio-usenet-engine` `main` at `65da4c88b` (its PR #4, release
   `usenet-native-7932d95b42f26ecb`) instead of the PR's `e4b0717ae` (`usenet-native-b6ca59925e184dce`). It adds haaihond's
@@ -278,14 +282,14 @@ can be dropped from knuvio after merging X.
   the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
   1.2.0-beta.1" and "Merge upstream 1.2.0-beta.2", "knuvio: take the Usenet engine as #4679's pinned dependency", and the
   cherry-picks of `e0255815e`, `a97133b69`, `05cd2182b`, `bd113d27a`, `e9009ae50`, `f19852eed`, `5d9ad4e73`, `f9731ceb0`,
-  `5c1ff0d52`, `5b2099d79`, `9df356b21`, `ac4d98fa6` (from #4679; the last reverts the one before it), and "knuvio: pin Usenet
+  `5c1ff0d52`, `5b2099d79`, `9df356b21`, `ac4d98fa6`, `e8b4f8bcc`, `a97c276cc` (from #4679; `ac4d98fa6` reverts `9df356b21`), and "knuvio: pin Usenet
   engine release 7932d95b".
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
 - **Upstream status:** upstream PR #4679 (open), which replaces #4426 (closed without merging on 2026-11-16), which
   replaced #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges ac4d98fa6..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 41285ea58..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. An engine update changes `engine-source.json` and `prebuilt/manifest.json`; its pinned release must exist,
   or the build fails. `full-nntp` may still get commits, but #4679 is the one to follow. When an upstream release contains the
