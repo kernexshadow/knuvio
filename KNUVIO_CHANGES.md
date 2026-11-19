@@ -387,5 +387,8 @@ can be dropped from knuvio after merging X.
 - **Files:** new `ui/screens/settings/KnuvioArtCompilationRow.kt`, `res/values/strings_knuvio_art.xml`. Upstream files
   edited: `app/build.gradle.kts` (`EmbedUpdateDexMetadataTask`), `ui/screens/settings/UpdateChannelSettings.kt` (one line).
 - **Remove:** revert its commit.
-- **Upstream status:** knuvio only, for now. If Android 14 devices confirm it, the embedded profile (and using the
-  installer screen for manual updates on Android 14+) could be proposed upstream.
+- **Results:** Google TV emulator API 36, ART module 360499999: `speed-profile`, reason `install`. Strong Leap S3 Pro,
+  Android 14, ART module 340090000 (no mainline ART update): `verify`, reason `install`, so that ART ignores the embedded
+  profile. Support depends on the ART module version, not the Android version.
+- **Upstream status:** knuvio only, for now. The embedded profile costs about 44 KB and helps only devices with a recent
+  ART module; using the installer screen for manual updates would need a per-device check, not just Android 14+.
