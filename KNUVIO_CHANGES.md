@@ -135,7 +135,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4679](https://github.com/NuvioMedia/NuvioTV/pull/4679) by haaihond (branch `usenet` on
-  haaihond/NuvioTV), complete at head `5b2099d79`. It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
+  haaihond/NuvioTV), complete at head `cfa9f6d24`. It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
   (branch `full-nntp`) with the same app code and the engine in its own repository. A Go engine (`libnuvio_usenet.so`) runs
   in-process and streams over loopback; its settings are under Settings → Integrations → Usenet. The engine lives in
   [NuvioMedia/nuvio-usenet-engine](https://github.com/NuvioMedia/nuvio-usenet-engine) (revision pinned in
@@ -210,7 +210,17 @@ can be dropped from knuvio after merging X.
   player) and [#92](https://github.com/haaihond/NuvioTV/pull/92) (a connection tuner for Usenet providers), followed by
   haaihond's tuner changes: provider refusals are confirmed before the connection allowance is lowered, a gain over the
   saved allowance must repeat, NNTP ports are compared at equal connection counts, and outstanding connections close
-  before another run. The same #90 and #92 changes went into `full-nntp` as #89 and #91.
+  before another run. The same #90 and #92 changes went into `full-nntp` as #89 and #91. Then
+  [#93](https://github.com/haaihond/NuvioTV/pull/93): the tuner waits for provider slots freed late (retries after 5, 10
+  and 20 s, at most a minute per run), still reports the limit after a later failure, treats sign-in replies that report a
+  connection ceiling as refusals (Test provider too), and says "Nothing to apply:" when the result matches the settings.
+
+  Engine ahead of the PR: knuvio pins `nuvio-usenet-engine` `main` at `65da4c88b` (its PR #4, release
+  `usenet-native-7932d95b42f26ecb`) instead of the PR's `e4b0717ae` (`usenet-native-b6ca59925e184dce`). It adds haaihond's
+  fixes for byte-range seeks around missing articles, first-read errors on secondary Blu-ray clips (reported as 410 with
+  `X-Usenet-Failure`, like the feature), fetch contexts released when producers finish, and the episode order on
+  incomplete Blu-ray discs. The app's HTTP contract with the engine is unchanged. Only `engine-source.json` and
+  `prebuilt/manifest.json` differ from the PR head; when the PR pins this release or a newer one, take the PR's files.
 
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
   (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
@@ -267,13 +277,13 @@ can be dropped from knuvio after merging X.
   the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
   1.2.0-beta.1" and "Merge upstream 1.2.0-beta.2", "knuvio: take the Usenet engine as #4679's pinned dependency", and the
   cherry-picks of `e0255815e`, `a97133b69`, `05cd2182b`, `bd113d27a`, `e9009ae50`, `f19852eed`, `5d9ad4e73`, `f9731ceb0`,
-  `5c1ff0d52`, `5b2099d79` (from #4679).
+  `5c1ff0d52`, `5b2099d79`, `9df356b21` (from #4679), and "knuvio: pin Usenet engine release 7932d95b".
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
 - **Upstream status:** upstream PR #4679 (open), which replaces #4426 (closed without merging on 2026-11-16), which
   replaced #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 5b2099d79..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges cfa9f6d24..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. An engine update changes `engine-source.json` and `prebuilt/manifest.json`; its pinned release must exist,
   or the build fails. `full-nntp` may still get commits, but #4679 is the one to follow. When an upstream release contains the
