@@ -71,11 +71,17 @@ internal object ArtCompilationStatusReader {
     // The OAT header and its key-value store sit a few KB into the odex; the file itself can be tens of MB.
     private const val HEADER_BYTES = 64 * 1024
     private val artVersionRegex = Regex("art-version:(\\d+)")
+    private val instructionSets = listOf("arm64", "arm", "x86_64", "x86", "riscv64")
 
     fun read(context: Context): ArtCompilationStatus? {
-        val codeDir = File(context.applicationInfo.sourceDir).parentFile ?: return null
-        val odex = File(codeDir, "oat").listFiles()
-            ?.firstNotNullOfOrNull { isaDir -> File(isaDir, "base.odex").takeIf { it.isFile } }
+        val info = context.applicationInfo
+        val codeDir = File(info.sourceDir).parentFile ?: return null
+        // The app may search the oat directory but not list it, so the odex is opened by its expected path. The native
+        // library directory is named after the app's instruction set, which comes first.
+        val odex = (listOfNotNull(info.nativeLibraryDir?.let { File(it).name }) + instructionSets)
+            .distinct()
+            .map { isa -> File(codeDir, "oat/$isa/base.odex") }
+            .firstOrNull { it.isFile }
             ?: return null
         val header = runCatching { readHeader(odex) }.getOrNull() ?: return null
         return ArtCompilationStatus(
