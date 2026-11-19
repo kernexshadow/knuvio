@@ -87,7 +87,7 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed audio sync fallback before it is merged: when a subtitle cannot be synced from embedded
   subtitles, it is aligned against the speech in the audio track.
 - **What:** [NuvioMedia/NuvioTV#4150](https://github.com/NuvioMedia/NuvioTV/pull/4150) by DavidVamaiotu, complete at head
-  `e9d460251`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
+  `9a823204b`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
   1.1.0-beta.12 as `1c523005f`, and the beta.12 merge resolves its conflict as the rebased PR does. Plus `d56f38a18`, our
   fix proposed into the PR's branch as
   [DavidVamaiotu/NuvioTV-Reshaped#70](https://github.com/DavidVamaiotu/NuvioTV-Reshaped/pull/70): when the audio sync tests
@@ -108,23 +108,34 @@ can be dropped from knuvio after merging X.
   support it, searches skipped for a clearly unmatched subtitle until more audio arrives, results from a forgotten
   audio track or stream discarded, English references fetched only when the speech model is downloaded, a background
   priority decoder thread, aligner buffers and FFT sizes reused, shorter setting descriptions and Polish translations.
+  The author then rebased the PR onto a newer `dev` (those commits unchanged, `e9d460251` = `157426e47`), and knuvio took
+  the next thirteen commits, `c34a73c3f` to `9a823204b`: a status indicator in the subtitle panel (Synced, Not needed,
+  In progress, May not match, No embedded subtitles, Failed) that replaces the no-fit toast, Failed after 5 minutes of
+  playback without an audio lock while the search goes on, a default sync tolerance of 300 ms, the "Auto synced" chip only
+  when AutoSync changed the timing and on one line, the selected subtitle kept marked after browsing another language,
+  relocks over the whole ±1.5 s search, faster narrow searches, speech-activity syncs placed 100 ms earlier, the
+  pre-optimized ORT speech model downloaded from NuvioMedia's `speech-models` mirror (upstream ONNX files as fallback),
+  and audio sampling picked from a dialog. `c34a73c3f` (a cogwheel status) is reverted by the next commit, `2bb076f1f`.
+  The conflicts of `be2f5dbdd` in `values-{pt-rPT,sk}/strings.xml` come from newer `dev` strings: knuvio keeps its own
+  file and only drops `autosync_toast_no_fit`.
   The build downloads the sherpa-onnx AAR from GitHub (pinned version and SHA-256). The speech model, about 74 MB, is
-  downloaded only from the button in Settings, from Hugging Face (k2-fsa ONNX files at a pinned commit), every file pinned
+  downloaded only from the button in Settings, from NuvioMedia's mirror (or k2-fsa's ONNX files at a pinned commit), every file pinned
   by size and SHA-256; without it a session uses speech detection only.
 - **Files:** new `app/src/main/java/com/nuvio/tv/ui/screens/player/audiosync/**`, its tests,
   `res/raw/silero_vad_v5_16k.bin`, `res/values{,-pl}/audio_sync_strings.xml`, `assets/licenses/audio_sync_NOTICE.md`.
   Upstream files edited: `app/build.gradle.kts`, `app/proguard-rules.pro`, `ui/screens/player/NuvioMpvSurfaceView.kt`,
-  `PlayerRuntimeController{AutomaticSubtitleSync,Initialization,Lifecycle,Observers}.kt`,
-  `settings/LicensesAttributionsScreen.kt`, `settings/PlaybackSubtitleSettings.kt`.
+  `PlayerRuntimeController{AutomaticSubtitleSync,Initialization,Lifecycle,Observers}.kt`, `SubtitleSelectionOverlay.kt`,
+  `player/autosync/AutoSync{Preferences,SyncedLabel}.kt`, `settings/LicensesAttributionsScreen.kt`,
+  `settings/PlaybackSubtitleSettings.kt`, `values*/strings.xml` (`autosync_toast_no_fit` removed).
 - **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
   `9d72c7046` (each message ends with "cherry picked from commit …"), the conflict resolution in "Merge upstream
   1.1.0-beta.12", `a8752a302` (cherry-pick of `d56f38a18`, PR #70), and the cherry-picks of `ee6aa9008`, `51aedfe85`,
-  `465473a26`, `9091ccb5e`, `6308322f4`, `127099b56`, `c6707a541`, and of the twelve commits `9f4ed6c08` to `e9d460251`.
-- **Remove:** revert the cherry-picks of `e9d460251` back to `9f4ed6c08`, then `c6707a541`, `127099b56`, `6308322f4`, `9091ccb5e`, `465473a26`, `51aedfe85`
+  `465473a26`, `9091ccb5e`, `6308322f4`, `127099b56`, `c6707a541`, of the twelve commits `9f4ed6c08` to `e9d460251`, and of the thirteen commits `c34a73c3f` to `9a823204b`.
+- **Remove:** revert the cherry-picks of `9a823204b` back to `c34a73c3f`, then `e9d460251` back to `9f4ed6c08`, then `c6707a541`, `127099b56`, `6308322f4`, `9091ccb5e`, `465473a26`, `51aedfe85`
   and `ee6aa9008`, then `a8752a302`, then the four original cherry-picks, newest first. Where a revert conflicts, keep the upstream release's code.
 - **Upstream status:** upstream PR #4150 (open). The regional-language fix is in the PR as `c1201940a`; PR #70 itself is
   still open.
-- **Watch:** if the PR gets more commits, cherry-pick the ones after `e9d460251`. If it is rebased again, compare the PR
+- **Watch:** if the PR gets more commits, cherry-pick the ones after `9a823204b`. If it is rebased again, compare the PR
   head's files with knuvio (`git diff <head> -- $(git diff --name-only <base> <head>)`): only other knuvio changes may
   differ, and nothing in `audiosync/` or `SubtitleCandidatePool*`. When an upstream release contains the PR,
   merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
