@@ -86,7 +86,8 @@ can be dropped from knuvio after merging X.
 - **Why:** try upstream's proposed on-device Usenet engine before it is merged: Usenet (NZB) sources play directly on the
   TV, without an external bridge.
 - **What:** [NuvioMedia/NuvioTV#4679](https://github.com/NuvioMedia/NuvioTV/pull/4679) by haaihond (branch `usenet` on
-  haaihond/NuvioTV), complete at head `36eb05454`. It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
+  haaihond/NuvioTV), complete at head `330ee7548` apart from that head's own merge of `dev` after 1.2.0-beta.3 (see
+  below). It replaced [#4426](https://github.com/NuvioMedia/NuvioTV/pull/4426)
   (branch `full-nntp`) with the same app code and the engine in its own repository. A Go engine (`libnuvio_usenet.so`) runs
   in-process and streams over loopback; its settings are under Settings → Integrations → Usenet. The engine lives in
   [NuvioMedia/nuvio-usenet-engine](https://github.com/NuvioMedia/nuvio-usenet-engine) (revision pinned in
@@ -181,7 +182,17 @@ can be dropped from knuvio after merging X.
   `prebuilt/manifest.json` differ from the PR head; when the PR pins this release or a newer one, take the PR's files.
 
   haaihond's own commits on the PR branch since then: separate User-Agent settings for indexer searches and NZB downloads
-  (an existing shared override is migrated to both), and a server icon in the Usenet integration settings.
+  (an existing shared override is migrated to both), and a server icon in the Usenet integration settings. Then
+  kernexshadow's [#97](https://github.com/haaihond/NuvioTV/pull/97) (the Tune connections intro says a run often
+  downloads more than 1 GB and up to about 4 GB) and [#98](https://github.com/haaihond/NuvioTV/pull/98) (a season search
+  that fails for a moment, such as a timeout, an unreachable indexer or a server error, is no longer cached as "no packs"
+  for 2 hours; only real rejections are), and ram130's [#96](https://github.com/haaihond/NuvioTV/pull/96): the settings
+  menu is called "Usenet", NNTP providers and indexers are grouped under built-in Usenet sources, the add provider and
+  add indexer dialogs link to phone setup, and Edit sorting from phone opens the ranking tab.
+
+  Left out until a release contains it: `330ee7548`, the PR's merge of `dev` up to `09330465c`, after 1.2.0-beta.3. Its
+  conflict resolution in `PlayerRuntimeControllerInitialization.kt` fits the PR's `recordPlayedRelease()` to #4740's
+  `tunneledFirstFrameAssumed`; the next upstream merge should resolve it the same way.
 
   How it got here: the PR branch is not merged, because it can carry upstream `dev` commits that are in no release. knuvio
   first followed [#3511](https://github.com/NuvioMedia/NuvioTV/pull/3511), the same work with the engine binaries committed:
@@ -239,14 +250,14 @@ can be dropped from knuvio after merging X.
   the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
   1.2.0-beta.1", "Merge upstream 1.2.0-beta.2" and "Merge upstream 1.2.0-beta.3", "knuvio: take the Usenet engine as #4679's pinned dependency", and the
   cherry-picks of `e0255815e`, `a97133b69`, `05cd2182b`, `bd113d27a`, `e9009ae50`, `f19852eed`, `5d9ad4e73`, `f9731ceb0`,
-  `5c1ff0d52`, `5b2099d79`, `9df356b21`, `ac4d98fa6`, `e8b4f8bcc`, `a97c276cc`, `df3924ef4`, `36eb05454` (from #4679; `ac4d98fa6` reverts `9df356b21`), and "knuvio: pin Usenet
-  engine release 7932d95b".
+  `5c1ff0d52`, `5b2099d79`, `9df356b21`, `ac4d98fa6`, `e8b4f8bcc`, `a97c276cc`, `df3924ef4`, `36eb05454`, `cab7f54ee`, `65b7ef85a`, `37859c64a`, `97effc94e`, `7198ea2a6`,
+  `bb8858493` (from #4679; `ac4d98fa6` reverts `9df356b21`), and "knuvio: pin Usenet engine release 7932d95b".
 - **Remove:** revert those commits, newest first (K-08 before them if both go). Where a revert conflicts, keep the upstream
   release's code.
 - **Upstream status:** upstream PR #4679 (open), which replaces #4426 (closed without merging on 2026-11-16), which
   replaced #3511 (closed without merging on 2026-11-01).
 - **Watch:** if the PR gets more commits, cherry-pick its new non-merge commits that are not in upstream `dev`
-  (`git rev-list --reverse --no-merges 36eb05454..<new head> ^upstream/dev`) and update the head here. If it merges a newer
+  (`git rev-list --reverse --no-merges 330ee7548..<new head> ^upstream/dev`) and update the head here. If it merges a newer
   upstream `dev`, leave out the parts that rely on `dev` after the current knuvio release and list them here until a release
   contains them. An engine update changes `engine-source.json` and `prebuilt/manifest.json`; its pinned release must exist,
   or the build fails. `full-nntp` may still get commits, but #4679 is the one to follow. When an upstream release contains the
