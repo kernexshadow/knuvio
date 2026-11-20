@@ -8,14 +8,13 @@ conflict. **Upstream files that knuvio edits** are the ones to watch:
 
 | Upstream file | Changed by |
 |---|---|
-| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679), [K-12](#k-12-embedded-art-profile-and-compilation-status) |
+| `app/build.gradle.kts` | [K-02](#k-02-application-ids-and-updater-source), [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679), [K-12](#k-12-embedded-art-profile-and-compilation-status) |
 | `app/src/main/java/com/nuvio/tv/updater/VersionUtils.kt` | [K-05](#k-05-knuvio-revisions-in-the-updater) |
-| `app/proguard-rules.pro`, player and settings files listed in K-06 | [K-06](#k-06-audio-based-subtitle-sync-upstream-pr-4150) |
 | `gradle/libs.versions.toml`, addon manager, stream, player and settings files listed in K-07 | [K-07](#k-07-built-in-usenet-streaming-upstream-pr-4679) |
 | Player files and Portuguese strings listed in K-08 | [K-08](#k-08-blu-ray-clips-and-discs-in-exoplayer-upstream-pr-696) |
 | `core/player/dvmkv/{DefaultEbmlReader,EbmlProcessor,MatroskaExtractor}.java`, `baseline-prof.txt` | [K-09](#k-09-read-mkv-cues-in-one-go-upstream-pr-4700) |
 | `PlayerRuntimeController{,Initialization}.kt`, `MetaDetailsViewModel.kt`, `StreamScreenViewModel.kt` | [K-10](#k-10-prewarm-the-first-playback-upstream-pr-4701) |
-| `PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line) | [K-11](#k-11-autosync-on-blu-ray-clips) |
+| `PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line), `AutomaticSubtitleSync.kt` | [K-11](#k-11-autosync-on-blu-ray-clips) |
 | `ui/screens/settings/UpdateChannelSettings.kt` (one line) | [K-12](#k-12-embedded-art-profile-and-compilation-status) |
 
 Upstream status: **knuvio only** = not meant for upstream; **upstream PR #N** = proposed; **in upstream since X** = the change
@@ -81,65 +80,6 @@ can be dropped from knuvio after merging X.
 - **Upstream status:** knuvio only.
 - **Watch:** upstream edits to `VersionUtils.kt` will conflict. Keep the `knuvioRevision` comparison as the last tie-breaker
   and run `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.updater.*'`.
-
-## K-06 Audio-based subtitle sync (upstream PR #4150)
-
-- **Why:** try upstream's proposed audio sync fallback before it is merged: when a subtitle cannot be synced from embedded
-  subtitles, it is aligned against the speech in the audio track.
-- **What:** [NuvioMedia/NuvioTV#4150](https://github.com/NuvioMedia/NuvioTV/pull/4150) by DavidVamaiotu, complete at head
-  `9a823204b`. The four original commits were cherry-picked unchanged at head `9d72c7046`; the author rebased the PR onto
-  1.1.0-beta.12 as `1c523005f`, and the beta.12 merge resolves its conflict as the rebased PR does. Plus `d56f38a18`, our
-  fix proposed into the PR's branch as
-  [DavidVamaiotu/NuvioTV-Reshaped#70](https://github.com/DavidVamaiotu/NuvioTV-Reshaped/pull/70): when the audio sync tests
-  other subtitles, regional variants stay apart, so a pt-PT subtitle is never swapped for a pt-BR one (same for es-419 and
-  Traditional Chinese). It only changes `SubtitleCandidatePool.languageKey` and its test. The author then rebased the PR
-  onto `dev` `5ad41476a` (contained in 1.2.0-beta.1) with that fix as `c1201940a`, and knuvio matched it exactly at that
-  commit. On top, the PR's `ee6aa9008` (second review: fallback off by default, audio sampling Low by default, mpv support
-  through dialogue spots and a retimed SRT copy, much faster word matching, less recognizer memory), `51aedfe85` (more
-  reliable locks, steadier recognition), `465473a26` (interrupted spot sampling resumes for the next subtitle; a sync found
-  through a bridged English reference is confirmed only when corroborated), `9091ccb5e` (no result toasts: a synced
-  subtitle is retimed silently and keeps the "Auto synced" chip), `6308322f4` (English references download sooner and
-  stay cached for the app, last 8 files; speech is recognised while they download), `127099b56` (an ambiguous
-  speech-activity match is confirmed by where subtitle lines start) and `c6707a541` (when no whole-film lock passes, as
-  with a subtitle made for another cut, it locks on the audio around the playhead) were cherry-picked unchanged,
-  and so were the PR's next twelve commits, `9f4ed6c08` to `e9d460251`: frame-rate choice (the 0.1% stretched rate
-  when overlap and line starts both favour it, the 23.976-based PAL rate unless 25/24 clearly fits better, and waiting
-  for a rate that clearly beats the other families), a speech-activity lock withdrawn when minutes of audio no longer
-  support it, searches skipped for a clearly unmatched subtitle until more audio arrives, results from a forgotten
-  audio track or stream discarded, English references fetched only when the speech model is downloaded, a background
-  priority decoder thread, aligner buffers and FFT sizes reused, shorter setting descriptions and Polish translations.
-  The author then rebased the PR onto a newer `dev` (those commits unchanged, `e9d460251` = `157426e47`), and knuvio took
-  the next thirteen commits, `c34a73c3f` to `9a823204b`: a status indicator in the subtitle panel (Synced, Not needed,
-  In progress, May not match, No embedded subtitles, Failed) that replaces the no-fit toast, Failed after 5 minutes of
-  playback without an audio lock while the search goes on, a default sync tolerance of 300 ms, the "Auto synced" chip only
-  when AutoSync changed the timing and on one line, the selected subtitle kept marked after browsing another language,
-  relocks over the whole ±1.5 s search, faster narrow searches, speech-activity syncs placed 100 ms earlier, the
-  pre-optimized ORT speech model downloaded from NuvioMedia's `speech-models` mirror (upstream ONNX files as fallback),
-  and audio sampling picked from a dialog. `c34a73c3f` (a cogwheel status) is reverted by the next commit, `2bb076f1f`.
-  The conflicts of `be2f5dbdd` in `values-{pt-rPT,sk}/strings.xml` come from newer `dev` strings: knuvio keeps its own
-  file and only drops `autosync_toast_no_fit`.
-  The build downloads the sherpa-onnx AAR from GitHub (pinned version and SHA-256). The speech model, about 74 MB, is
-  downloaded only from the button in Settings, from NuvioMedia's mirror (or k2-fsa's ONNX files at a pinned commit), every file pinned
-  by size and SHA-256; without it a session uses speech detection only.
-- **Files:** new `app/src/main/java/com/nuvio/tv/ui/screens/player/audiosync/**`, its tests,
-  `res/raw/silero_vad_v5_16k.bin`, `res/values{,-pl}/audio_sync_strings.xml`, `assets/licenses/audio_sync_NOTICE.md`.
-  Upstream files edited: `app/build.gradle.kts`, `app/proguard-rules.pro`, `ui/screens/player/NuvioMpvSurfaceView.kt`,
-  `PlayerRuntimeController{AutomaticSubtitleSync,Initialization,Lifecycle,Observers}.kt`, `SubtitleSelectionOverlay.kt`,
-  `player/autosync/AutoSync{Preferences,SyncedLabel}.kt`, `settings/LicensesAttributionsScreen.kt`,
-  `settings/PlaybackSubtitleSettings.kt`, `values*/strings.xml` (`autosync_toast_no_fit` removed).
-- **Commits:** `3fa527098`, `1bcbfff6c`, `5c3f82d69`, `bf3ab8e3f`, cherry-picks of `4fd4ffff6`, `50b433bca`, `d73467d79`,
-  `9d72c7046` (each message ends with "cherry picked from commit …"), the conflict resolution in "Merge upstream
-  1.1.0-beta.12", `a8752a302` (cherry-pick of `d56f38a18`, PR #70), and the cherry-picks of `ee6aa9008`, `51aedfe85`,
-  `465473a26`, `9091ccb5e`, `6308322f4`, `127099b56`, `c6707a541`, of the twelve commits `9f4ed6c08` to `e9d460251`, and of the thirteen commits `c34a73c3f` to `9a823204b`.
-- **Remove:** revert the cherry-picks of `9a823204b` back to `c34a73c3f`, then `e9d460251` back to `9f4ed6c08`, then `c6707a541`, `127099b56`, `6308322f4`, `9091ccb5e`, `465473a26`, `51aedfe85`
-  and `ee6aa9008`, then `a8752a302`, then the four original cherry-picks, newest first. Where a revert conflicts, keep the upstream release's code.
-- **Upstream status:** upstream PR #4150 (open). The regional-language fix is in the PR as `c1201940a`; PR #70 itself is
-  still open.
-- **Watch:** if the PR gets more commits, cherry-pick the ones after `9a823204b`. If it is rebased again, compare the PR
-  head's files with knuvio (`git diff <head> -- $(git diff --name-only <base> <head>)`): only other knuvio changes may
-  differ, and nothing in `audiosync/` or `SubtitleCandidatePool*`. When an upstream release contains the PR,
-  merging it may conflict in the files above: take upstream's version and delete this entry. If the PR is closed without merging, revert.
-  Check with `:app:testFullDebugUnitTest --tests 'com.nuvio.tv.ui.screens.player.audiosync.*'`.
 
 ## K-07 Built-in Usenet streaming (upstream PR #4679)
 
@@ -253,8 +193,8 @@ can be dropped from knuvio after merging X.
   #4426 resolves them, so knuvio matches the PR head exactly. The same holds after the PR's later `dev` merges up to
   `8f451a88b`, which are contained in 1.1.0-beta.13. The merges in `6ca8894c1` and `48b0a2488` (`dev` up to `01759ead3`)
   were left out of the 1.1.0 revisions and are contained in 1.2.0-beta.1. Its merge conflicted only in the imports of
-  `NuvioMpvSurfaceView`, resolved as the PR resolves them, so knuvio matches the PR head again, apart from K-02, K-06,
-  K-08 and the `dev` code that 1.2.0-beta.1 adds after `01759ead3`. The PR then merged `dev` up to `e0e830b60`
+  `NuvioMpvSurfaceView`, resolved as the PR resolves them, so knuvio matches the PR head again, apart from K-02, the
+  audio sync PR #4150 (then K-06), K-08 and the `dev` code that 1.2.0-beta.1 adds after `01759ead3`. The PR then merged `dev` up to `e0e830b60`
   (`635bc983c`, `e9e95ec98`), which contains 1.2.0-beta.1, so those beta.1 differences are gone. Both merges were left
   out of the 1.2.0-beta.1 revisions, because their conflict resolutions in `PlayerRuntimeControllerStreams.kt`,
   `StreamScreenViewModel.kt` and `AddonManagerViewModel.kt` fit the PR to `dev` code after 1.2.0-beta.1 (#4624's
@@ -262,12 +202,16 @@ can be dropped from knuvio after merging X.
   and does not change those three files after it, so its merge takes the PR head's version of all three; in
   `PlayerRuntimeControllerStreams.kt` it puts back K-08's two changes (the Blu-ray state reset in
   `applySelectedStreamState` and `bluray = currentStreamBluray` in `switchToSourceStream`). knuvio matches the PR head
-  merged with 1.2.0-beta.2 again, apart from K-02, K-06 and K-08. On 2026-11-16 haaihond closed #4426 in favour of
+  merged with 1.2.0-beta.2 again, apart from K-02, #4150 and K-08. On 2026-11-16 haaihond closed #4426 in favour of
   #4679: four new commits on `dev` `2c853c178` (1.2.0-beta.2) that carry the app code of `full-nntp` `671f1b1d7` and take
-  the engine as a pinned dependency (`3063a97f8` there). Its app files matched knuvio apart from K-02, K-06 and K-08, so
+  the engine as a pinned dependency (`3063a97f8` there). Its app files matched knuvio apart from K-02, #4150 and K-08, so
   "knuvio: take the Usenet engine as #4679's pinned dependency" only matched it outside the app code (the vendored engine
   source and its two workflows deleted, the pinned release, licenses, prebuilt scripts and their test taken), and the
-  #4679 commits after `3063a97f8` were cherry-picked.
+  #4679 commits after `3063a97f8` were cherry-picked. The PR then merged exactly 1.2.0-beta.3 (`3a3c996b0`), which
+  replaces the addon reorder buttons with a move mode (#4725), so knuvio's beta.3 merge takes that merge's version of
+  `AddonManager{Screen,UiState,ViewModel}.kt`, `AdvancedSettingsViewModel.kt` and `AddonManagerViewModelReorderTest.kt`,
+  and its place for `keepDebugSymbols` in `app/build.gradle.kts`. knuvio matches `3a3c996b0` apart from K-02, K-08 and
+  the other entries here.
 - **Files:** new `native/usenet/**` (pinned engine release, licenses, build and prebuilt scripts), `app/src/main/java/com/nuvio/tv/core/usenet/**`, new files in `core/di`,
   `core/player`, `core/server`, `core/streams`, `ui/screens/player` and `ui/screens/settings` (stream fallback, ranking,
   Usenet screens), their tests, three `res/values/*usenet*` files,
@@ -293,7 +237,7 @@ can be dropped from knuvio after merging X.
   `9ff432986`, `2a5b19c37`, `e7b694a84`, `433cb5a1b` (from #4426; `0b662dda0` and `78eb82f38`
   rebuilt the engine on parallel branches, so their `manifest.json` conflicts were resolved with each commit's version), "knuvio: drop the committed Usenet engine binaries",
   the conflict resolutions in "Merge upstream 1.1.0-beta.9", "Merge upstream 1.1.0-beta.10", "Merge upstream
-  1.2.0-beta.1" and "Merge upstream 1.2.0-beta.2", "knuvio: take the Usenet engine as #4679's pinned dependency", and the
+  1.2.0-beta.1", "Merge upstream 1.2.0-beta.2" and "Merge upstream 1.2.0-beta.3", "knuvio: take the Usenet engine as #4679's pinned dependency", and the
   cherry-picks of `e0255815e`, `a97133b69`, `05cd2182b`, `bd113d27a`, `e9009ae50`, `f19852eed`, `5d9ad4e73`, `f9731ceb0`,
   `5c1ff0d52`, `5b2099d79`, `9df356b21`, `ac4d98fa6`, `e8b4f8bcc`, `a97c276cc`, `df3924ef4`, `36eb05454` (from #4679; `ac4d98fa6` reverts `9df356b21`), and "knuvio: pin Usenet
   engine release 7932d95b".
@@ -370,7 +314,8 @@ can be dropped from knuvio after merging X.
   `ui/screens/player/PlayerRuntimeController{,Initialization}.kt`, `ui/screens/detail/MetaDetailsViewModel.kt`,
   `ui/screens/stream/StreamScreenViewModel.kt`.
 - **Commits:** the cherry-pick of `0ae8110fa`. Its conflict in `StreamScreenViewModel.init` with K-07 keeps both: the
-  prewarm call first, as in the PR, then K-07's Usenet blocks.
+  prewarm call first, as in the PR, then K-07's Usenet blocks. The 1.2.0-beta.3 merge's conflict in
+  `MetaDetailsViewModel.init` also keeps both: the prewarm call first, then upstream's `applyTrailerHandoff()`.
 - **Remove:** revert that commit.
 - **Upstream status:** upstream PR #4701 (open).
 - **Watch:** cherry-pick new commits of the PR (`git rev-list --reverse --no-merges 0ae8110fa..<new head> ^upstream/dev`).
@@ -378,9 +323,10 @@ can be dropped from knuvio after merging X.
 ## K-11 AutoSync on Blu-ray clips
 
 - **Why:** K-08 plays Blu-ray clips (`.m2ts`, also from a full disc served by K-07) through its own extractors, which
-  skipped the hook K-06 puts on the player's extractors. On a disc the audio fallback never heard the audio, and the
-  embedded subtitles give AutoSync no usable reference, so a subtitle was never synced (seen with a full UHD disc release from Usenet, while
-  remuxes of the same film synced).
+  skipped the hook that the audio sync fallback (PR #4150, in upstream since 1.2.0-beta.3) puts on the player's
+  extractors. On a disc the audio fallback never heard the audio, and the embedded subtitles give AutoSync no usable
+  reference, so a subtitle was never synced (seen with a full UHD disc release from Usenet, while remuxes of the same
+  film synced).
 - **What:** `PlayerMediaSourceFactory` takes a wrapper for the Blu-ray extractors, and the player sets it to the audio
   fallback's taps when AutoSync and the audio fallback are on. A playlist of several clips is left unwrapped, because
   each clip's timestamps start again at zero. On a disc the audio fallback now syncs the subtitle (about 20 s on a
@@ -392,12 +338,11 @@ can be dropped from knuvio after merging X.
   soon as the subtitle is loaded. On the SHIELD the first lock came after 8.7 s instead of 21 s.
 - **Files:** new `ui/screens/player/PlayerRuntimeControllerBdavAutoSync.kt`. Upstream files edited:
   `ui/screens/player/PlayerMediaSourceFactory.kt`, `PlayerRuntimeControllerInitialization.kt` (one line after the
-  AutoSync hook). K-06 file edited: `autosync/AutomaticSubtitleSync.kt` (the live reference wait, and an import).
-- **Remove:** revert its commits. Remove it together with K-06 or K-08.
-- **Watch:** when the PR behind K-06 changes the live reference wait in `AutomaticSubtitleSync.kt`, keep the
+  AutoSync hook), `player/autosync/AutomaticSubtitleSync.kt` (the live reference wait, and an import).
+- **Remove:** revert its commits. Remove it together with K-08.
+- **Watch:** when upstream changes the live reference wait in `AutomaticSubtitleSync.kt`, keep the
   `BdavAutoSyncSources` case.
-- **Upstream status:** knuvio only, while K-06 and K-08 are separate open PRs. If both are merged upstream, propose it
-  there.
+- **Upstream status:** knuvio only, while K-08 is an open PR. If it is merged upstream, propose this there too.
 
 ## K-12 Embedded ART profile and compilation status
 

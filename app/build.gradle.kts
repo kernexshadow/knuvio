@@ -158,8 +158,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1079
-        versionName = "1.2.0-beta.2"
+        versionCode = 1080
+        versionName = "1.2.0-beta.3"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -368,9 +368,9 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            keepDebugSymbols += "**/libnuvio_usenet.so"
             // Audio Sync uses the JNI API; these unused native APIs duplicate runtime code.
             excludes += listOf("lib/*/libsherpa-onnx-c-api.so", "lib/*/libsherpa-onnx-cxx-api.so")
-            keepDebugSymbols += "**/libnuvio_usenet.so"
             // Keep one consistent native set across dependencies.
             pickFirsts += listOf(
                 "lib/*/libc++_shared.so",
