@@ -354,6 +354,7 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
 
                 state.copy(
                     subtitleStyle = settings.subtitleStyle,
+                    assSubtitleStyle = settings.assSubtitleStyle,
                     loadingOverlayEnabled = settings.loadingOverlayEnabled,
                     showPlayerLoadingStatus = settings.showPlayerLoadingStatus,
                     playbackIssueReportsEnabled = settings.playbackIssueReportsEnabled,
@@ -975,6 +976,8 @@ internal fun PlayerRuntimeController.handleVc1PlaybackFailure(errorMessage: Stri
     errorRetryJob?.cancel()
     errorRetryJob = null
     releasePlayer(flushPlaybackState = false)
+    // An auto-selected source tries the next matching one before showing the VC-1 error.
+    if (tryFallbackToNextSourceAfterError(displayMessage)) return
     cancelNextEpisodeAutoPlayOnFatalError()
     _uiState.update {
         it.copy(

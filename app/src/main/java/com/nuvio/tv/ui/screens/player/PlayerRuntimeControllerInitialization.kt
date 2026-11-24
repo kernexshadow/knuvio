@@ -1093,6 +1093,9 @@ internal fun PlayerRuntimeController.initializePlayer(
 
             if (useLibass) {
                 _exoPlayer?.getAssHandlerCompat()?.let { handler ->
+                    handler.applyAssFontScaleCompat(
+                        (_uiState.value.effectiveAssSubtitleStyle.size / 100f).coerceIn(0.5f, 3.0f)
+                    )
                     // Apply video effects only when an ASS track has been detected for
                     // this stream. On first init, no tracks are known yet so effects are
                     // skipped. When tracks scan finds ASS, the player is rebuilt and this
@@ -1336,6 +1339,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                             val firstFrameAlreadyRendered = hasRenderedFirstFrame
                             if (readyTransition.nextState.hasRenderedFirstFrame && isTunneledPlayback) {
                                 if (!hasRenderedFirstFrame) recordPlayedRelease()
+                                tunneledFirstFrameAssumed = !hasRenderedFirstFrame
                                 hasRenderedFirstFrame = true
                             }
                             when (val action = readyTransition.action) {
@@ -1492,6 +1496,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                         val isFirstFrame = !hasRenderedFirstFrame  // capture BEFORE flipping
                         hasRenderedFirstFrame = true
                         if (isFirstFrame) recordPlayedRelease()
+                        tunneledFirstFrameAssumed = false
                         mediaSourceFactory.unlockStartupPrefetch()
                         if (isFirstFrame && _uiState.value.postPlayDismissedForCurrentEpisode) {
                             _uiState.update { it.copy(postPlayDismissedForCurrentEpisode = false) }
@@ -2186,6 +2191,7 @@ internal fun PlayerRuntimeController.resetLoadingOverlayForNewStream() {
         progress = null
     )
     hasRenderedFirstFrame = false
+    tunneledFirstFrameAssumed = false
     endDetectionArmed = false
     mpvEofSeenClear = false
     exoEndOverrunHandled = false
