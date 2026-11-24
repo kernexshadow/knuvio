@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nuvio.tv.core.debrid.DebridStreamFormatterDefaults
+import com.nuvio.tv.core.usenet.StreamFormatterPreview
 import com.nuvio.tv.domain.model.DebridStreamPreferences
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayInputStream
@@ -14,6 +15,8 @@ class DebridFormatterConfigServer(
     private val onSettingsChanged: (DebridFormatterSettings) -> Unit,
     private val context: Context? = null,
     private val logoProvider: (() -> ByteArray?)? = null,
+    /** Shows the templates being typed on example results; without it the editor has no preview. */
+    private val previewRenderer: ((nameTemplate: String, descriptionTemplate: String) -> List<StreamFormatterPreview.Sample>)? = null,
     port: Int = 8090
 ) : NanoHTTPD(port) {
     private val gson = Gson()
@@ -25,6 +28,7 @@ class DebridFormatterConfigServer(
             session.method == Method.GET && session.uri == "/logo.png" -> serveLogo()
             session.method == Method.GET && session.uri == "/api/settings" -> serveSettings()
             session.method == Method.POST && session.uri == "/api/settings" -> handleSettingsUpdate(session)
+            session.method == Method.POST && session.uri == "/api/preview" -> handlePreview(session)
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
         }
     }
@@ -68,9 +72,17 @@ class DebridFormatterConfigServer(
             "descriptionTemplate" to defaults.descriptionTemplate,
             "streamPreferences" to defaults.streamPreferences
         )
+        val presetsMap = mapOf(
+            "detailed" to mapOf(
+                "nameTemplate" to DebridStreamFormatterDefaults.DETAILED_NAME_TEMPLATE,
+                "descriptionTemplate" to DebridStreamFormatterDefaults.DETAILED_DESCRIPTION_TEMPLATE
+            )
+        )
         val settingsJson = gson.toJson(settingsMap)
         val defaultsJson = gson.toJson(defaultsMap)
-        val responseJson = """{"settings":$settingsJson,"defaults":$defaultsJson}"""
+        val presetsJson = gson.toJson(presetsMap)
+        val responseJson = """{"settings":$settingsJson,"defaults":$defaultsJson,"presets":$presetsJson,""" +
+            """"preview":${previewRenderer != null}}"""
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", responseJson)
     }
 
@@ -99,6 +111,19 @@ class DebridFormatterConfigServer(
         return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", gson.toJson(mapOf("status" to "saved")))
     }
 
+    private fun handlePreview(session: IHTTPSession): Response {
+        val renderer = previewRenderer
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
+        val parsed = runCatching { gson.fromJson<Map<String, Any?>>(readUtf8Body(session), settingsMapType) }.getOrNull()
+        val nameTemplate = parsed?.get("nameTemplate") as? String ?: ""
+        val descriptionTemplate = parsed?.get("descriptionTemplate") as? String ?: ""
+        val previews = renderer(nameTemplate, descriptionTemplate).map {
+            mapOf("kind" to it.kind, "name" to it.name, "description" to it.description)
+        }
+        return newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
+            gson.toJson(mapOf("previews" to previews)))
+    }
+
     private fun errorResponse(message: String): Response =
         newFixedLengthResponse(
             Response.Status.BAD_REQUEST,
@@ -125,6 +150,7 @@ class DebridFormatterConfigServer(
             onSettingsChanged: (DebridFormatterSettings) -> Unit,
             context: Context? = null,
             logoProvider: (() -> ByteArray?)? = null,
+            previewRenderer: ((nameTemplate: String, descriptionTemplate: String) -> List<StreamFormatterPreview.Sample>)? = null,
             startPort: Int = 8090,
             maxAttempts: Int = 10
         ): DebridFormatterConfigServer? {
@@ -135,6 +161,7 @@ class DebridFormatterConfigServer(
                         onSettingsChanged = onSettingsChanged,
                         context = context,
                         logoProvider = logoProvider,
+                        previewRenderer = previewRenderer,
                         port = port
                     )
                     server.start(SOCKET_READ_TIMEOUT, false)

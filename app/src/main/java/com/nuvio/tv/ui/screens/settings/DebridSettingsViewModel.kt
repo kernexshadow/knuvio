@@ -10,11 +10,13 @@ import com.nuvio.tv.core.debrid.DebridDeviceAuthorization
 import com.nuvio.tv.core.debrid.DebridDeviceAuthorizationTokenResult
 import com.nuvio.tv.core.debrid.DebridProviderCapability
 import com.nuvio.tv.core.debrid.DebridProviders
+import com.nuvio.tv.core.debrid.DebridStreamFormatter
 import com.nuvio.tv.core.debrid.supports
 import com.nuvio.tv.core.qr.QrCodeGenerator
 import com.nuvio.tv.core.server.DebridFormatterConfigServer
 import com.nuvio.tv.core.server.DebridFormatterSettings
 import com.nuvio.tv.core.server.DeviceIpAddress
+import com.nuvio.tv.core.usenet.StreamFormatterPreview
 import com.nuvio.tv.core.util.readAppLogoBytes
 import com.nuvio.tv.data.local.DebridSettingsDataStore
 import com.nuvio.tv.data.remote.dto.PremiumizeDeviceTokenDto
@@ -48,7 +50,9 @@ class DebridSettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val dataStore: DebridSettingsDataStore,
     private val torboxApi: TorboxApi,
-    private val premiumizeApi: PremiumizeApi
+    private val premiumizeApi: PremiumizeApi,
+    /** Renders the editor's preview with the same formatter results use. */
+    private val streamFormatter: DebridStreamFormatter
 ) : ViewModel() {
     private var formatterServer: DebridFormatterConfigServer? = null
     private val logoBytes: ByteArray? by lazy { context.readAppLogoBytes() }
@@ -118,7 +122,8 @@ class DebridSettingsViewModel @Inject constructor(
                 }
             },
             context = context,
-            logoProvider = { logoBytes }
+            logoProvider = { logoBytes },
+            previewRenderer = { name, description -> StreamFormatterPreview.render(streamFormatter, name, description) }
         )
         val server = formatterServer
         if (server == null) {

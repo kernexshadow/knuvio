@@ -272,6 +272,38 @@ object DebridFormatterWebPage {
     .tabs { grid-template-columns: 1fr; }
     .tab { padding: 0.75rem 0.6rem; }
   }
+  [hidden] {
+    display: none !important;
+  }
+  .preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .preview-card {
+    background: #1c1c1e;
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+  }
+  .preview-kind {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .preview-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fff;
+    white-space: pre-wrap;
+  }
+  .preview-description {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
@@ -300,6 +332,10 @@ object DebridFormatterWebPage {
       <span class="chip">{stream.audioTags::join(' | ')}</span>
       <span class="chip">{stream.rseMatched::join(' | ')}</span>
       <span class="chip">{stream.size::bytes}</span>
+      <span class="chip">{stream.bitrate}</span>
+      <span class="chip">{stream.age}</span>
+      <span class="chip">{stream.tier}</span>
+      <span class="chip">{stream.languageEmojis::join(' ')}</span>
       <span class="chip">{service.cached::istrue["Ready"||"Not Ready"]}</span>
     </div>
 
@@ -311,6 +347,11 @@ object DebridFormatterWebPage {
     <div class="field">
       <label for="descriptionTemplate">${s(R.string.web_debrid_description_template, "Description Template").html()}</label>
       <textarea id="descriptionTemplate" spellcheck="false"></textarea>
+    </div>
+
+    <div class="field" id="previewField" hidden>
+      <label>${s(R.string.web_debrid_preview, "Preview").html()}</label>
+      <div class="preview" id="preview"></div>
     </div>
   </div>
 
@@ -365,6 +406,7 @@ object DebridFormatterWebPage {
   </div>
 
   <div class="actions">
+    <button class="btn" id="detailed">${s(R.string.web_debrid_preset_detailed, "Detailed Preset").html()}</button>
     <button class="btn" id="defaults">${s(R.string.web_debrid_restore_default, "Restore Default").html()}</button>
     <button class="btn" id="save">${s(R.string.web_debrid_save_settings, "Save Settings").html()}</button>
   </div>
@@ -372,6 +414,14 @@ object DebridFormatterWebPage {
 </div>
 <script>
 let defaults = null;
+let presets = {};
+const previewKinds = {
+  usenetMovie: '${s(R.string.web_debrid_preview_usenet_movie, "Built-in Usenet · film").js()}',
+  usenetEpisode: '${s(R.string.web_debrid_preview_usenet_episode, "Built-in Usenet · episode").js()}',
+  debridMovie: '${s(R.string.web_debrid_preview_debrid_movie, "Debrid · cached film").js()}'
+};
+let previewTimer = null;
+let previewRequest = 0;
 const nameBox = document.getElementById('nameTemplate');
 const descBox = document.getElementById('descriptionTemplate');
 const statusBox = document.getElementById('status');
@@ -481,7 +531,36 @@ async function load(){
   nameBox.value = body.settings.nameTemplate ?? defaults.nameTemplate;
   descBox.value = body.settings.descriptionTemplate ?? defaults.descriptionTemplate;
   applyPreferences(body.settings.streamPreferences || defaults.streamPreferences);
+  presets = body.presets || {};
+  document.getElementById('detailed').hidden = !presets.detailed;
+  if(body.preview){
+    document.getElementById('previewField').hidden = false;
+    renderPreview();
+  }
 }
+// The TV renders the examples with its own formatter, so they show what results will show.
+async function renderPreview(){
+  const request = ++previewRequest;
+  const res = await fetch('/api/preview',{
+    method:'POST',
+    headers:{'Content-Type':'application/json; charset=utf-8'},
+    body:JSON.stringify({nameTemplate:nameBox.value,descriptionTemplate:descBox.value})
+  }).catch(()=>null);
+  if(!res || !res.ok || request !== previewRequest)return;
+  const body = await res.json().catch(()=>null);
+  if(!body || request !== previewRequest)return;
+  document.getElementById('preview').innerHTML = (body.previews||[]).map(item=>
+    '<div class="preview-card"><div class="preview-kind">' + escapeHtml(previewKinds[item.kind] || item.kind) + '</div>' +
+    '<div class="preview-name">' + escapeHtml(item.name) + '</div>' +
+    '<div class="preview-description">' + escapeHtml(item.description) + '</div></div>').join('');
+}
+function schedulePreview(){
+  if(document.getElementById('previewField').hidden)return;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(renderPreview, 300);
+}
+nameBox.addEventListener('input', schedulePreview);
+descBox.addEventListener('input', schedulePreview);
 async function save(){
   statusBox.textContent = '${s(R.string.web_status_saving, "Saving…").js()}';
   statusBox.className = 'status';
@@ -504,6 +583,13 @@ document.getElementById('defaults').addEventListener('click',()=>{
   nameBox.value = defaults.nameTemplate;
   descBox.value = defaults.descriptionTemplate;
   applyPreferences(defaults.streamPreferences);
+  schedulePreview();
+});
+document.getElementById('detailed').addEventListener('click',()=>{
+  if(!presets.detailed)return;
+  nameBox.value = presets.detailed.nameTemplate;
+  descBox.value = presets.detailed.descriptionTemplate;
+  schedulePreview();
 });
 renderRules();
 load().catch(()=>{statusBox.textContent='${s(R.string.web_debrid_status_load_error, "Could not load Debrid settings").js()}';statusBox.className='status error';});
