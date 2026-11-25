@@ -22,6 +22,9 @@ can be dropped from knuvio after merging X.
 Dropped because upstream now has them: K-07 built-in Usenet streaming (#4679), K-08 Blu-ray clips and discs in ExoPlayer
 (#696) and K-11 AutoSync on Blu-ray clips (#4756), all in upstream since 1.2.0-beta.4. K-06 was never used.
 
+`main` also holds upstream `dev` at `f656d5452` (33 commits after 1.2.0-beta.4), merged on request for `1.2.0-beta.4+k.1`,
+an exception to merging only release tags. The next upstream release tag contains it and merges normally.
+
 ---
 
 ## K-01 Branding: icons, banner, app name, wordmarks
@@ -149,8 +152,9 @@ Dropped because upstream now has them: K-07 built-in Usenet streaming (#4679), K
 - **Files:** upstream files edited: `core/streams/StreamRanking.kt`, `core/usenet/{BuiltInUsenetService,NewznabProtocol,
   UsenetReleaseLabels}.kt`, `res/values{,-vi}/usenet_sources.xml`, and their tests.
 - **Commits:** the cherry-picks of `655bccb78`, `65d80756e`, `27cc9a13c`.
-- **Remove:** revert those commits (after K-14, which builds on them).
-- **Upstream status:** upstream PR #4821 (open).
+- **Remove:** nothing to revert once upstream has it; the upstream merge already made the code identical.
+- **Upstream status:** merged upstream as #4821, in upstream `dev` (merged into knuvio at `f656d5452`); drop this entry
+  once a release contains it.
 - **Watch:** cherry-pick new commits of the PR (`git rev-list --reverse --no-merges 27cc9a13c..<new head> ^upstream/dev`).
 
 ## K-14 Template formatting for Usenet results (upstream PR #4823)
@@ -158,7 +162,7 @@ Dropped because upstream now has them: K-07 built-in Usenet streaming (#4679), K
 - **Why:** let built-in Usenet results use the same name and description templates as Debrid results, and see a
   template's result while typing it.
 - **What:** [NuvioMedia/NuvioTV#4823](https://github.com/NuvioMedia/NuvioTV/pull/4823) by kernexshadow (head
-  `952754769`), stacked on #4821, cherry-picked unchanged: built-in Usenet results can optionally be formatted with the
+  `952754769`), stacked on #4821 (now merged upstream), cherry-picked unchanged: built-in Usenet results can optionally be formatted with the
   Debrid templates, and the formatter page previews templates as they are typed, with a detailed preset.
 - **Files:** new `core/usenet/{StreamFormatterPreview,UsenetResultValues}.kt` and tests. Upstream files edited:
   `BUILT_IN_USENET.md`, `core/debrid/DebridStreamFormatter{,Defaults}.kt`, `core/server/DebridFormatter{ConfigServer,
